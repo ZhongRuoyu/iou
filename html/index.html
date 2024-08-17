@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IOU</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
+    integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+  <div class="container my-3" style="max-width: 768px !important;">
+    <h1>IOU</h1>
+
+    <nav>
+      <div class="nav nav-tabs" id="nav-tab" role="tablist">
+        <button class="nav-link active" id="nav-records-tab" data-bs-toggle="tab" data-bs-target="#nav-records"
+          type="button" role="tab" aria-controls="nav-records" aria-selected="true">Records</button>
+        <button class="nav-link" id="nav-new-record-tab" data-bs-toggle="tab" data-bs-target="#nav-new-record"
+          type="button" role="tab" aria-controls="nav-new-record" aria-selected="false">Add Record</button>
+        <button class="nav-link" id="nav-summary-tab" data-bs-toggle="tab" data-bs-target="#nav-summary" type="button"
+          role="tab" aria-controls="nav-summary" aria-selected="false">Summary</button>
+      </div>
+    </nav>
+
+    <div class="tab-content" id="nav-tabContent">
+      <div class="tab-pane fade show active" id="nav-records" role="tabpanel" aria-labelledby="nav-records-tab"
+        tabindex="0">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Date</th>
+                <th>Lender</th>
+                <th>Borrower</th>
+                <th>Amount</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-records">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="nav-new-record" role="tabpanel" aria-labelledby="nav-new-record-tab" tabindex="1">
+        <form id="form-add-record">
+          <div class="input-group my-3" id="username">
+            <span class="input-group-text w-25">Filing as</span>
+          </div>
+          <div class="input-group my-3" id="lender">
+            <span class="input-group-text w-25">Lender</span>
+          </div>
+          <div class="input-group my-3" id="borrower">
+            <span class="input-group-text w-25">Borrower</span>
+          </div>
+          <div class="input-group mb-3">
+            <span class="input-group-text w-25">Amount</span>
+            <span class="input-group-text">S$</span>
+            <input type="number" step="0.01" class="form-control" id="amount" required>
+          </div>
+          <div class="input-group mb-3">
+            <span class="input-group-text w-25">Remarks</span>
+            <input type="text" class="form-control" id="remarks" autocomplete="off">
+          </div>
+          <div class="input-group mb-3">
+            <input type="submit" class="btn btn-primary" value="Add" autocomplete="off">
+          </div>
+        </form>
+      </div>
+
+      <div class="tab-pane fade" id="nav-summary" role="tabpanel" aria-labelledby="nav-summary-tab" tabindex="2">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Payment from</th>
+              <th>Payment to</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-summary">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"
+    integrity="sha512-7Pi/otdlbbCR+LnW+F7PwFcSDJOuUJB3OxtEHbg4vSMvzvJjde4Po1v4BR9Gdc9aXNUNFVUY+SK51wWT8WF0Gg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="main.js"></script>
+</body>
+
+</html>
