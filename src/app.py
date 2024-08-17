@@ -165,7 +165,12 @@ def new_record():
     con.commit()
 
   if BILLING_REPO is not None:
-    subprocess.run(["git", "pull"], cwd=BILLING_REPO, check=True)
+    subprocess.run(["git", "fetch", "origin", "main"],
+                   cwd=BILLING_REPO,
+                   check=True)
+    subprocess.run(["git", "reset", "--hard", "origin/main"],
+                   cwd=BILLING_REPO,
+                   check=True)
     for record in records:
       borrower = record.borrower
       lender = record.lender
