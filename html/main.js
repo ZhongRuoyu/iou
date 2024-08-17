@@ -131,7 +131,7 @@ async function addRecord() {
   await fetch(`${api}/record`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "BORROW", created_by: username, lender, borrowers, amount, remarks }),
+    body: JSON.stringify({ type: "PAYMENT", created_by: username, lender, borrowers, amount, remarks }),
   })
     .then(res => {
       alert("Record added successfully.");
