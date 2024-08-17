@@ -125,7 +125,10 @@ async function addRecord() {
 
   const remarks = document.getElementById("remarks").value;
 
-  const response = await fetch(`${api}/record`, {
+  const addButton = document.getElementById("add");
+  addButton.disabled = true;
+  addButton.value = "Adding...";
+  await fetch(`${api}/record`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "BORROW", created_by: username, lender, borrowers, amount, remarks }),
@@ -135,9 +138,11 @@ async function addRecord() {
       document.getElementById("form-add-record").reset();
       usernameInput.checked = true;
     })
-    .catch(err => alert(err));
-
-  return false;
+    .catch(err => {
+      alert(err);
+    });
+  addButton.disabled = false;
+  addButton.value = "Add";
 }
 
 (() => {
