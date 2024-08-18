@@ -255,19 +255,18 @@ def new_record():
                    cwd=BILLING_REPO,
                    check=True)
 
-    with open(
-        f"{BILLING_REPO}/records.csv", "r", encoding="utf-8",
-        newline="") as csv_file:
-      reader = csv.reader(csv_file)
-      next(reader, None)  # Skip header
-      existing_records = [Record.from_csv_row(row) for row in reader]
+    records_csv = f"{BILLING_REPO}/records.csv"
+
+    if os.path.exists(records_csv):
+      with open(records_csv, "r", encoding="utf-8", newline="") as csv_file:
+        reader = csv.reader(csv_file)
+        next(reader, None)  # Skip header
+        existing_records = [Record.from_csv_row(row) for row in reader]
 
     for record in records:
       existing_records += [record]
       existing_records.sort(key=lambda r: r.id)
-      with open(
-          f"{BILLING_REPO}/records.csv", "w", encoding="utf-8",
-          newline="") as csv_file:
+      with open(records_csv, "w", encoding="utf-8", newline="") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow([
             "id", "type", "lender", "borrower", "amount", "created_by",
@@ -276,9 +275,7 @@ def new_record():
         for record in existing_records:
           writer.writerow(record.csv_row())
 
-      subprocess.run(["git", "add", "records.csv"],
-                     cwd=BILLING_REPO,
-                     check=True)
+      subprocess.run(["git", "add", records_csv], cwd=BILLING_REPO, check=True)
       subprocess.run(["git", "commit", "-m",
                       record.commit_message()],
                      cwd=BILLING_REPO,
