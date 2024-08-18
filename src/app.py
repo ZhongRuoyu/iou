@@ -257,6 +257,7 @@ def new_record():
 
     records_csv = f"{BILLING_REPO}/records.csv"
 
+    existing_records = []
     if os.path.exists(records_csv):
       with open(records_csv, "r", encoding="utf-8", newline="") as csv_file:
         reader = csv.reader(csv_file)
