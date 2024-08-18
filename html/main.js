@@ -2,7 +2,6 @@ const api = "/api";
 
 async function updateUsers() {
   const users = await fetch(`${api}/users`).then(res => res.json());
-  console.log(users);
 
   users.forEach(user => {
     ["username", "lender", "borrower"].forEach(id => {
@@ -27,7 +26,6 @@ async function updateUsers() {
 
 async function updateRecords() {
   const records = await fetch(`${api}/records`).then(res => res.json());
-  console.log(records);
 
   const table = document.getElementById("tbody-records");
   if (table === null) {
@@ -40,7 +38,8 @@ async function updateRecords() {
     .forEach(record => {
       const row = table.insertRow();
       const checkboxCell = row.insertCell();
-      const checkbox = checkboxCell.appendChild(document.createElement("input"));
+      const checkbox = document.createElement("input");
+      checkboxCell.appendChild(checkbox);
       checkbox.type = "checkbox";
       checkbox.id = `record-checkbox-${record.id}`;
       checkbox.setAttribute("x-record-id", record.id);
@@ -67,7 +66,6 @@ async function updateRecords() {
 
 async function updateSummary() {
   const summary = await fetch(`${api}/summary`).then(res => res.json());
-  console.log(summary);
 
   const table = document.getElementById("tbody-summary");
   if (table === null) {
@@ -92,26 +90,29 @@ async function updateSummary() {
 }
 
 async function addRecord() {
-  const usernameInput = document.querySelector("input[name='username']:checked");
-  if (usernameInput === null) {
+  const created_by =
+    document.querySelector("input[name='username']:checked")?.value;
+  if (created_by === null) {
     alert("Please select a username.");
     return;
   }
-  const username = usernameInput.value;
 
-  const lenderInput = document.querySelector("input[name='lender']:checked");
-  if (lenderInput === null) {
+  const lender = document.querySelector("input[name='lender']:checked")?.value;
+  if (lender === null) {
     alert("Please select a lender.");
     return;
   }
-  const lender = lenderInput.value;
 
-  const borrowerInputs = document.querySelectorAll("input[name='borrower']:checked");
-  if (borrowerInputs.length === 0) {
+  const borrowers = [
+    ...document
+      .querySelectorAll("input[name='borrower']:checked")
+      ?.values() ?? []
+  ]
+    .map(node => node.value);
+  if (borrowers.length === 0) {
     alert("Please select at least one borrower.");
     return;
   }
-  const borrowers = [...borrowerInputs.values()].map(node => node.value);
   if (borrowers.length === 1 && borrowers.includes(lender)) {
     alert("Lender cannot be the only borrower.");
     return;
@@ -131,7 +132,9 @@ async function addRecord() {
   await fetch(`${api}/record`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "PAYMENT", created_by: username, lender, borrowers, amount, remarks }),
+    body: JSON.stringify({
+      type: "PAYMENT", created_by, lender, borrowers, amount, remarks
+    }),
   })
     .then(res => {
       alert("Record added successfully.");
@@ -139,7 +142,7 @@ async function addRecord() {
       usernameInput.checked = true;
     })
     .catch(err => {
-      alert(err);
+      alert(`Failed to add record: ${err}`);
     });
   addButton.disabled = false;
   addButton.value = "Add";
