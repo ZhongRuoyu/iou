@@ -18,13 +18,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Run `ruff check`
+        uses: astral-sh/ruff-action@v3
         with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-      - name: Run Pylint
-        run: pylint src
-      - name: Run YAPF
-        run: yapf -r -d src
+          src: ./src
+      - name: Run `ruff format`
+        run: ruff format --check --diff
