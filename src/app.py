@@ -84,7 +84,7 @@ class Record:
       self.borrower,
       f"{self.amount / 100:.2f}",
       self.created_by,
-      self.created_at.isoformat(),
+      self.created_at.isoformat(timespec="milliseconds"),
       self.remarks,
       int(self.active),
     )
@@ -97,7 +97,7 @@ class Record:
       f"borrower={self.borrower}",
       f"amount={self.amount}",
       f"created_by={self.created_by}",
-      f"created_at={self.created_at.isoformat()}",
+      f"created_at={self.created_at.isoformat(timespec='milliseconds')}",
       f"remarks={self.remarks}",
       f"active={int(self.active)}",
     ]
