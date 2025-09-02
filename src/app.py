@@ -5,7 +5,6 @@ import os
 import sqlite3
 import subprocess
 from datetime import datetime
-from itertools import combinations, permutations
 from textwrap import dedent
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -183,9 +182,7 @@ def summary() -> list[dict[str, str | int]]:
     con.row_factory = dict_factory
 
     users = con.cursor().execute("SELECT * FROM Users;").fetchall()
-    payment = {
-      pair: 0 for pair in permutations(list(user["name"] for user in users), 2)
-    }
+    net_balance = {user["name"]: 0 for user in users}
 
     records = (
       con.cursor()
@@ -197,23 +194,40 @@ def summary() -> list[dict[str, str | int]]:
       )
       .fetchall()
     )
+
     for record in records:
-      pair = (record["borrower"], record["lender"])
-      payment[pair] += record["amount"]
-
-    for pair in combinations(list(user["name"] for user in users), 2):
-      reverse_pair = (pair[1], pair[0])
-      if payment[pair] < payment[reverse_pair]:
-        pair, reverse_pair = reverse_pair, pair
-      payment[pair] -= payment[reverse_pair]
-      payment.pop(reverse_pair)
-      if payment[pair] == 0:
-        payment.pop(pair)
-
-    return [
-      {"from": pair[0], "to": pair[1], "amount": amount}
-      for pair, amount in payment.items()
+      net_balance[record["lender"]] += record["amount"]
+      net_balance[record["borrower"]] -= record["amount"]
+    creditors = [
+      (name, balance) for name, balance in net_balance.items() if balance > 0
     ]
+    debtors = [
+      (name, -balance) for name, balance in net_balance.items() if balance < 0
+    ]
+    creditors.sort(key=lambda x: x[1], reverse=True)
+    debtors.sort(key=lambda x: x[1], reverse=True)
+
+    transactions = []
+    creditor_idx = 0
+    debtor_idx = 0
+    while creditor_idx < len(creditors) and debtor_idx < len(debtors):
+      creditor_name, credit_amount = creditors[creditor_idx]
+      debtor_name, debt_amount = debtors[debtor_idx]
+
+      transfer_amount = min(credit_amount, debt_amount)
+      if transfer_amount > 0:
+        transactions.append(
+          {"from": debtor_name, "to": creditor_name, "amount": transfer_amount}
+        )
+      creditors[creditor_idx] = (creditor_name, credit_amount - transfer_amount)
+      debtors[debtor_idx] = (debtor_name, debt_amount - transfer_amount)
+
+      if creditors[creditor_idx][1] == 0:
+        creditor_idx += 1
+      if debtors[debtor_idx][1] == 0:
+        debtor_idx += 1
+
+    return transactions
 
 
 @app.route("/record", methods=["POST"])
