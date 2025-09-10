@@ -66,7 +66,10 @@ async function updateRecords() {
             cell.textContent = new Date(record[key]).toLocaleString();
             break;
           case "amount":
-            cell.textContent = `S$${(record[key] / 100).toFixed(2)}`;
+            cell.textContent = Intl.NumberFormat(navigator.language, {
+              style: "currency",
+              currency: "SGD",
+            }).format(record[key] / 100);
             break;
           default:
             cell.textContent = record[key];
