@@ -1,5 +1,12 @@
 const api = "/api";
 
+function formatCurrency(amount) {
+  return Intl.NumberFormat(navigator.language, {
+    style: "currency",
+    currency: "SGD",
+  }).format(amount);
+}
+
 async function updateUsers() {
   const users = await fetch(`${api}/users`).then(res => res.json());
 
@@ -66,10 +73,7 @@ async function updateRecords() {
             cell.textContent = new Date(record[key]).toLocaleString();
             break;
           case "amount":
-            cell.textContent = Intl.NumberFormat(navigator.language, {
-              style: "currency",
-              currency: "SGD",
-            }).format(record[key] / 100);
+            cell.textContent = formatCurrency(record[key] / 100);
             break;
           default:
             cell.textContent = record[key];
@@ -98,7 +102,7 @@ async function updateSummary() {
       const cell = row.insertCell();
       switch (key) {
         case "amount":
-          cell.textContent = `S$${(item[key] / 100).toFixed(2)}`;
+          cell.textContent = formatCurrency(item[key] / 100);
           break;
         default:
           cell.textContent = item[key];
@@ -166,6 +170,17 @@ async function addRecord() {
   addButton.disabled = false;
   addButton.value = "Add";
 }
+
+(() => {
+  document.getElementById("input-currency-label").textContent =
+    Intl.NumberFormat(navigator.language, {
+      style: "currency",
+      currency: "SGD",
+    })
+      .formatToParts(0)
+      .find(part => part.type === "currency")
+      .value;
+})();
 
 (() => {
   document.getElementById("form-add-record")
