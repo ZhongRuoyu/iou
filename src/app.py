@@ -120,7 +120,7 @@ class Record:
 
 DATABASE = os.getenv("DATABASE", "iou.db")
 BILLING_REPO = os.getenv("BILLING_REPO", None)
-GIT = os.getenv("GIT", "/usr/bin/git")
+GIT = os.getenv("GIT", "git")
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
