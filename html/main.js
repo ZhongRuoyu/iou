@@ -160,6 +160,10 @@ async function addRecord() {
     }),
   })
     .then(res => {
+      if (!res.ok) {
+        throw new Error(res.statusText);
+      }
+
       alert("Record added successfully.");
       document.getElementById("form-add-record").reset();
       usernameInput.checked = true;
