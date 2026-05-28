@@ -5,6 +5,7 @@ import os
 import sqlite3
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from textwrap import dedent
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -127,6 +128,8 @@ load_dotenv()
 
 DATABASE = os.getenv("DATABASE", "iou.db")
 BILLING_REPO = os.getenv("BILLING_REPO", None)
+API_PREFIX = "/api"
+HTML_DIR = Path(__file__).resolve().parent.parent / "html"
 
 
 def init():
@@ -161,7 +164,11 @@ def init():
 
 
 init()
-app = Flask(__name__)
+app = Flask(
+  __name__,
+  static_folder=str(HTML_DIR),
+  static_url_path="",
+)
 CORS(app)
 
 
@@ -176,14 +183,19 @@ def ceildiv(a: int, b: int) -> int:
   return -(a // -b)
 
 
-@app.route("/users")
+@app.route("/")
+def index() -> Any:
+  return app.send_static_file("index.html")
+
+
+@app.route(f"{API_PREFIX}/users")
 def get_users() -> list[dict[str, str | int]]:
   with sqlite3.connect(DATABASE) as con:
     con.row_factory = dict_factory
     return con.cursor().execute("SELECT * FROM Users;").fetchall()
 
 
-@app.route("/records")
+@app.route(f"{API_PREFIX}/records")
 def get_records() -> dict[str, dict[str, Any]]:
   with sqlite3.connect(DATABASE) as con:
     con.row_factory = dict_factory
@@ -191,7 +203,7 @@ def get_records() -> dict[str, dict[str, Any]]:
     return {str(record["id"]): record for record in records}
 
 
-@app.route("/summary")
+@app.route(f"{API_PREFIX}/summary")
 def summary() -> list[dict[str, str | int]]:
   with sqlite3.connect(DATABASE) as con:
     con.row_factory = dict_factory
@@ -245,7 +257,7 @@ def summary() -> list[dict[str, str | int]]:
     return transactions
 
 
-@app.route("/record", methods=["POST"])
+@app.route(f"{API_PREFIX}/record", methods=["POST"])
 def new_record() -> tuple[dict[str, str | bool], int] | dict[str, str | bool]:
   req = request.get_json()
   for key in ["type", "lender", "borrowers", "amount", "created_by", "remarks"]:
