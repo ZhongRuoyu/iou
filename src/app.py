@@ -122,7 +122,7 @@ DATABASE = os.getenv("DATABASE", "iou.db")
 BILLING_REPO = os.getenv("BILLING_REPO", None)
 GIT = os.getenv("GIT", "/usr/bin/git")
 API_PREFIX = "/api"
-HTML_DIR = Path(__file__).resolve().parent.parent / "html"
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
 def init() -> None:
@@ -159,7 +159,7 @@ def init() -> None:
 init()
 app = Flask(
   __name__,
-  static_folder=str(HTML_DIR),
+  static_folder=str(STATIC_DIR),
   static_url_path="",
 )
 CORS(app)
