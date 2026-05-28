@@ -1,0 +1,39 @@
+version: 2
+
+updates:
+  - package-ecosystem: docker
+    directory: /
+    allow:
+      - dependency-type: all
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
+        patterns:
+          - "*"
+  - package-ecosystem: github-actions
+    directory: /
+    allow:
+      - dependency-type: all
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+  - package-ecosystem: uv
+    directory: /
+    allow:
+      - dependency-type: all
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      uv:
+        patterns:
+          - "*"
