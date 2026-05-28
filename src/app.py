@@ -4,80 +4,35 @@ import csv
 import os
 import sqlite3
 import subprocess
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from flask import Flask, request
+from flask import Flask, Response, request
 from flask_cors import CORS
 
-RecordCsvRow = tuple[
-  int | None,
-  str,
-  str,
-  str,
-  str,
-  str,
-  str,
-  str | None,
-  int,
-]
 
-
+@dataclass(slots=True)
 class Record:
   """A record of an IOU transaction."""
 
-  id: Optional[int]
   type: str
   lender: str
   borrower: str
   amount: int
   created_by: str
   created_at: datetime
-  remarks: Optional[str]
-  active: bool
+  remarks: str | None = None
+  active: bool = True
+  id: int | None = None
 
-  def __init__(
+  def to_insert_values(
     self,
-    *,
-    id: Optional[int] = None,
-    type: str,
-    lender: str,
-    borrower: str,
-    amount: int,
-    created_by: str,
-    created_at: datetime,
-    remarks: Optional[str] = None,
-    active: Optional[bool] = True,
-  ) -> None:
-    self.id = id
-    self.type = type
-    self.lender = lender
-    self.borrower = borrower
-    self.amount = amount
-    self.created_by = created_by
-    self.created_at = created_at
-    self.remarks = remarks
-    self.active = bool(active)
-
-  @staticmethod
-  def from_csv_row(row: list[str]) -> "Record":
-    return Record(
-      id=int(row[0]),
-      type=row[1],
-      lender=row[2],
-      borrower=row[3],
-      amount=int(float(row[4]) * 100),
-      created_by=row[5],
-      created_at=datetime.fromisoformat(row[6]),
-      remarks=row[7],
-      active=bool(row[8]),
-    )
-
-  def insert_values(self):
+  ) -> tuple[str, str, str, int, str, int, str | None, bool]:
     return (
       self.type,
       self.lender,
@@ -86,18 +41,58 @@ class Record:
       self.created_by,
       int(self.created_at.timestamp() * 1000),
       self.remarks,
+      self.active,
     )
 
-  def csv_row(self) -> RecordCsvRow:
+  @staticmethod
+  def csv_header() -> tuple[str, str, str, str, str, str, str, str, str]:
     return (
-      self.id,
+      "id",
+      "type",
+      "lender",
+      "borrower",
+      "amount",
+      "created_by",
+      "created_at",
+      "remarks",
+      "active",
+    )
+
+  @staticmethod
+  def from_csv_row(row: list[str]) -> Record:
+    (
+      record_id,
+      record_type,
+      lender,
+      borrower,
+      amount,
+      created_by,
+      created_at,
+      remarks,
+      active,
+    ) = row
+    return Record(
+      id=int(record_id),
+      type=record_type,
+      lender=lender,
+      borrower=borrower,
+      amount=int(float(amount) * 100),
+      created_by=created_by,
+      created_at=datetime.fromisoformat(created_at),
+      remarks=remarks,
+      active=bool(int(active)),
+    )
+
+  def to_csv_row(self) -> tuple[int, str, str, str, str, str, str, str, int]:
+    return (
+      self.id or 0,
       self.type,
       self.lender,
       self.borrower,
       f"{self.amount / 100:.2f}",
       self.created_by,
       self.created_at.isoformat(timespec="milliseconds"),
-      self.remarks,
+      self.remarks or "",
       int(self.active),
     )
 
@@ -128,11 +123,12 @@ load_dotenv()
 
 DATABASE = os.getenv("DATABASE", "iou.db")
 BILLING_REPO = os.getenv("BILLING_REPO", None)
+GIT = os.getenv("GIT", "/usr/bin/git")
 API_PREFIX = "/api"
 HTML_DIR = Path(__file__).resolve().parent.parent / "html"
 
 
-def init():
+def init() -> None:
   with sqlite3.connect(DATABASE) as con:
     con.cursor().execute(
       dedent("""
@@ -176,15 +172,26 @@ def dict_factory(
   cursor: sqlite3.Cursor,
   row: tuple[Any, ...],
 ) -> dict[str, Any]:
-  return dict(zip(list(column[0] for column in cursor.description), row))
+  return dict(
+    zip(
+      [column[0] for column in cursor.description],
+      row,
+      strict=True,
+    )
+  )
 
 
 def ceildiv(a: int, b: int) -> int:
   return -(a // -b)
 
 
+def git(args: list[str], *, cwd: Path) -> None:
+  # `args` are fixed command segments from this module and are not shell input.
+  subprocess.run([GIT, *args], cwd=str(cwd), check=True)  # noqa: S603
+
+
 @app.route("/")
-def index() -> Any:
+def index() -> Response:
   return app.send_static_file("index.html")
 
 
@@ -294,59 +301,42 @@ def new_record() -> tuple[dict[str, str | bool], int] | dict[str, str | bool]:
             amount,
             created_by,
             created_at,
-            remarks)
-          VALUES(?, ?, ?, ?, ?, ?, ?);
+            remarks,
+            active
+          )
+          VALUES(?, ?, ?, ?, ?, ?, ?, ?);
         """),
-        record.insert_values(),
+        record.to_insert_values(),
       )
       record.id = cur.lastrowid
     con.commit()
 
   if BILLING_REPO is not None:
-    subprocess.run(
-      ["git", "fetch", "origin", "main"], cwd=BILLING_REPO, check=True
-    )
-    subprocess.run(
-      ["git", "reset", "--hard", "origin/main"], cwd=BILLING_REPO, check=True
-    )
+    billing_repo = Path(BILLING_REPO)
+    git(["fetch", "origin", "main"], cwd=billing_repo)
+    git(["checkout", "-B", "main", "origin/main"], cwd=billing_repo)
 
-    records_csv = f"{BILLING_REPO}/records.csv"
+    records_csv = billing_repo / "records.csv"
 
-    existing_records = []
-    if os.path.exists(records_csv):
-      with open(records_csv, encoding="utf-8", newline="") as csv_file:
+    existing_records: list[Record] = []
+    if records_csv.exists():
+      with records_csv.open(encoding="utf-8", newline="") as csv_file:
         reader = csv.reader(csv_file)
         next(reader, None)  # Skip header
         existing_records = [Record.from_csv_row(row) for row in reader]
 
     for record in records:
-      existing_records += [record]
+      existing_records.append(record)
       existing_records.sort(key=lambda r: r.id)
-      with open(records_csv, "w", encoding="utf-8", newline="") as csv_file:
+      with records_csv.open("w", encoding="utf-8", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(
-          [
-            "id",
-            "type",
-            "lender",
-            "borrower",
-            "amount",
-            "created_by",
-            "created_at",
-            "remarks",
-            "active",
-          ]
-        )
-        for record in existing_records:
-          writer.writerow(record.csv_row())
+        writer.writerow(Record.csv_header())
+        for existing_record in existing_records:
+          writer.writerow(existing_record.to_csv_row())
 
-      subprocess.run(["git", "add", records_csv], cwd=BILLING_REPO, check=True)
-      subprocess.run(
-        ["git", "commit", "-m", record.commit_message()],
-        cwd=BILLING_REPO,
-        check=True,
-      )
+      git(["add", str(records_csv)], cwd=billing_repo)
+      git(["commit", "-m", record.commit_message()], cwd=billing_repo)
 
-    subprocess.run(["git", "push", "origin"], cwd=BILLING_REPO, check=True)
+    git(["push", "origin"], cwd=billing_repo)
 
   return {"success": True}

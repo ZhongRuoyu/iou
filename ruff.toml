@@ -1,0 +1,15 @@
+line-length = 80
+indent-width = 2
+target-version = "py314"
+
+[lint]
+select = ["ALL"]
+ignore = [
+  # flake8-commas: missing-trailing-comma
+  # conflicts with the formatter
+  "COM812",
+  # pydocstyle
+  "D",
+  # flake8-print
+  "T20",
+]
