@@ -1,17 +1,16 @@
 """Flask app for IOU API."""
 
 import csv
+import datetime as dt
 import os
 import sqlite3
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
-from zoneinfo import ZoneInfo
 
-from flask import Flask, Response, request
+from flask import Flask, Response, render_template, request
 from flask_cors import CORS
 
 
@@ -24,7 +23,7 @@ class Record:
   borrower: str
   amount: int
   created_by: str
-  created_at: datetime
+  created_at: dt.datetime
   remarks: str | None = None
   active: bool = True
   id: int | None = None
@@ -77,7 +76,7 @@ class Record:
       borrower=borrower,
       amount=int(float(amount) * 100),
       created_by=created_by,
-      created_at=datetime.fromisoformat(created_at),
+      created_at=dt.datetime.fromisoformat(created_at),
       remarks=remarks,
       active=bool(int(active)),
     )
@@ -112,7 +111,7 @@ class Record:
 
   def commit_message(self) -> str:
     amount = self.amount / 100
-    message = f"{self.lender} -> {self.borrower}: ${amount:.2f}"
+    message = f"{self.lender} -> {self.borrower}: {CURRENCY} {amount:.2f}"
     if self.remarks:
       message += f" ({self.remarks})"
     return message
@@ -121,8 +120,10 @@ class Record:
 DATABASE = os.getenv("DATABASE", "iou.db")
 BILLING_REPO = os.getenv("BILLING_REPO", None)
 GIT = os.getenv("GIT", "git")
+CURRENCY = os.getenv("CURRENCY", "USD")
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
 
 def init() -> None:
@@ -159,8 +160,9 @@ def init() -> None:
 init()
 app = Flask(
   __name__,
-  static_folder=str(STATIC_DIR),
   static_url_path="",
+  static_folder=str(STATIC_DIR),
+  template_folder=str(TEMPLATES_DIR),
 )
 CORS(app)
 
@@ -190,6 +192,11 @@ def git(args: list[str], *, cwd: Path) -> None:
 @app.route("/")
 def index() -> Response:
   return app.send_static_file("index.html")
+
+
+@app.route("/main.js")
+def main_js() -> str:
+  return render_template("main.js", currency=CURRENCY)
 
 
 @app.route(f"{API_PREFIX}/users")
@@ -277,7 +284,7 @@ def new_record() -> tuple[dict[str, Any], int] | dict[str, Any]:
       borrower=borrower,
       amount=ceildiv(req["amount"], len(borrowers)),
       created_by=req["created_by"],
-      created_at=datetime.now(tz=ZoneInfo("Asia/Singapore")),
+      created_at=dt.datetime.now(tz=dt.UTC),
       remarks=req["remarks"],
     )
     for borrower in borrowers

@@ -1,9 +1,10 @@
 const api = "/api";
+const currency = "{{ currency or 'USD' }}";
 
 function formatCurrency(amount) {
   return Intl.NumberFormat(navigator.language, {
     style: "currency",
-    currency: "SGD",
+    currency,
   }).format(amount);
 }
 
@@ -179,7 +180,7 @@ async function addRecord() {
   document.getElementById("input-currency-label").textContent =
     Intl.NumberFormat(navigator.language, {
       style: "currency",
-      currency: "SGD",
+      currency,
     })
       .formatToParts(0)
       .find(part => part.type === "currency")
