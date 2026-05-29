@@ -200,7 +200,7 @@ def ceildiv(a: int, b: int) -> int:
 
 def git(args: list[str], *, cwd: Path) -> None:
   # `args` are fixed command segments from this module and are not shell input.
-  subprocess.run([GIT, *args], cwd=str(cwd), check=True)  # noqa: S603
+  subprocess.run([GIT, *args], cwd=cwd, check=True)  # noqa: S603
 
 
 @app.route("/")
