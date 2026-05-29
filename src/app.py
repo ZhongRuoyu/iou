@@ -329,7 +329,7 @@ def new_record() -> tuple[dict[str, Any], int] | dict[str, Any]:
       record.id = cur.lastrowid
     con.commit()
 
-  if BILLING_REPO is not None:
+  if BILLING_REPO:
     billing_repo = Path(BILLING_REPO)
     git(["fetch", "origin", "main"], cwd=billing_repo)
     git(["checkout", "-B", "main", "origin/main"], cwd=billing_repo)
