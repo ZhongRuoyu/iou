@@ -110,7 +110,7 @@ class Record:
       "active": self.active,
     }
 
-  def commit_message(self, currency: str) -> str:
+  def message(self, currency: str) -> str:
     amount = self.amount / 100
     message = f"{self.lender} -> {self.borrower}: {currency} {amount:.2f}"
     if self.remarks:

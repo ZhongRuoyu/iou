@@ -5,8 +5,9 @@ from typing import Any
 from flask import Blueprint, Response, render_template, request
 
 import iou.database as db
-from iou.config import CURRENCY, DATABASE
+from iou.config import CURRENCY, DATABASE, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from iou.record import Record
+from iou.telegram import announce_records
 
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -80,6 +81,9 @@ def add_records() -> tuple[dict[str, Any], int]:
   ]
 
   db.add_records(DATABASE, records)
+
+  if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+    announce_records(records, CURRENCY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
 
   return {"success": True}, 200
 
