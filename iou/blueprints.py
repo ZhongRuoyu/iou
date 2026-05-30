@@ -1,13 +1,11 @@
-import csv
 import datetime as dt
-import subprocess
 from pathlib import Path
 from typing import Any
 
 from flask import Blueprint, Response, render_template, request
 
 import iou.database as db
-from iou.config import BILLING_REPO, CURRENCY, DATABASE, GIT
+from iou.config import CURRENCY, DATABASE
 from iou.record import Record
 
 API_PREFIX = "/api"
@@ -21,11 +19,6 @@ def init() -> None:
 
 def ceildiv(a: int, b: int) -> int:
   return -(a // -b)
-
-
-def git(args: list[str], *, cwd: Path) -> None:
-  # `args` are fixed command segments from this module and are not shell input.
-  subprocess.run([GIT, *args], cwd=cwd, check=True)  # noqa: S603
 
 
 blueprint = Blueprint(
@@ -87,33 +80,6 @@ def add_records() -> tuple[dict[str, Any], int]:
   ]
 
   db.add_records(DATABASE, records)
-
-  if BILLING_REPO:
-    git(["fetch", "origin", "main"], cwd=BILLING_REPO)
-    git(["checkout", "-B", "main", "origin/main"], cwd=BILLING_REPO)
-
-    records_csv = BILLING_REPO / "records.csv"
-
-    existing_records: list[Record] = []
-    if records_csv.exists():
-      with records_csv.open(encoding="utf-8", newline="") as csv_file:
-        reader = csv.reader(csv_file)
-        next(reader, None)  # Skip header
-        existing_records = [Record.from_csv_row(row) for row in reader]
-
-    for record in records:
-      existing_records.append(record)
-      existing_records.sort(key=lambda r: r.id)
-      with records_csv.open("w", encoding="utf-8", newline="") as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(Record.csv_header())
-        for existing_record in existing_records:
-          writer.writerow(existing_record.to_csv_row())
-
-      git(["add", str(records_csv)], cwd=BILLING_REPO)
-      git(["commit", "-m", record.commit_message(CURRENCY)], cwd=BILLING_REPO)
-
-    git(["push", "origin"], cwd=BILLING_REPO)
 
   return {"success": True}, 200
 
