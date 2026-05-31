@@ -129,10 +129,6 @@ async function updateSummary() {
   const userMap = Object.fromEntries(
     users.map(user => [user.email, user.name]),
   );
-  summary.forEach(item => {
-    item.from = userMap[item.from] ?? item.from;
-    item.to = userMap[item.to] ?? item.to;
-  });
 
   const table = document.getElementById("tbody-summary");
   if (table === null) {
@@ -142,17 +138,43 @@ async function updateSummary() {
   [...table.rows].forEach(row => row.remove());
   summary.forEach(item => {
     const row = table.insertRow();
-    ["from", "to", "amount"].forEach(key => {
+    [
+      { key: "from", value: userMap[item.from] ?? item.from },
+      { key: "to", value: userMap[item.to] ?? item.to },
+      { key: "amount", value: formatCurrency(item.amount / 100) },
+    ].forEach(({ value }) => {
       const cell = row.insertCell();
-      switch (key) {
-        case "amount":
-          cell.textContent = formatCurrency(item[key] / 100);
-          break;
-        default:
-          cell.textContent = item[key];
-          break;
+      cell.textContent = value;
+    });
+
+    const actionCell = row.insertCell();
+    const settleBtn = document.createElement("button");
+    settleBtn.classList.add("btn", "btn-success", "btn-sm");
+    settleBtn.textContent = "Settle";
+    settleBtn.addEventListener("click", async () => {
+      settleBtn.disabled = true;
+      settleBtn.textContent = "Settling...";
+      const response = await fetch(`${api}/records`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "PAYMENT",
+          lender: item.from,
+          borrowers: [item.to],
+          amount: item.amount,
+          remarks: "Settlement",
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        await updateSummary();
+      } else {
+        alert(`Failed to settle: ${data.error || response.statusText}`);
+        settleBtn.disabled = false;
+        settleBtn.textContent = "Settle";
       }
     });
+    actionCell.appendChild(settleBtn);
   });
 }
 
