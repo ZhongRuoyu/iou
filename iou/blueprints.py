@@ -37,8 +37,11 @@ def index() -> Response:
 
 
 @blueprint.route("/main.js")
-def main_js() -> str:
-  return render_template("main.js", currency=CURRENCY)
+def main_js() -> Response:
+  return Response(
+    render_template("main.js", currency=CURRENCY),
+    mimetype="text/javascript",
+  )
 
 
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
