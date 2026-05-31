@@ -23,6 +23,27 @@ async function getSummary() {
 async function updateUsers() {
   const users = await getUsers();
 
+  ["DEBT", "PAYMENT"].forEach(recordType => {
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.classList.add("btn-check");
+    input.name = "type";
+    input.value = recordType;
+    input.id = `type-${recordType}`;
+    input.required = true;
+    input.autocomplete = "off";
+    if (recordType === "DEBT") {
+      input.checked = true;
+    }
+    document.getElementById("type").appendChild(input);
+
+    const label = document.createElement("label");
+    label.classList.add("btn", "form-control");
+    label.htmlFor = `type-${recordType}`;
+    label.textContent = recordType;
+    document.getElementById("type").appendChild(label);
+  });
+
   users.forEach(user => {
     if (!user.active) {
       return;
@@ -75,7 +96,14 @@ async function updateRecords() {
       checkbox.type = "checkbox";
       checkbox.id = `record-checkbox-${record.id}`;
       checkbox.setAttribute("x-record-id", record.id);
-      ["created_at", "lender", "borrower", "amount", "remarks"].forEach(key => {
+      [
+        "created_at",
+        "type",
+        "lender",
+        "borrower",
+        "amount",
+        "remarks",
+      ].forEach(key => {
         const cell = row.insertCell();
         switch (key) {
           case "created_at":
@@ -129,6 +157,13 @@ async function updateSummary() {
 }
 
 async function addRecord() {
+  const type =
+    document.querySelector("input[name='type']:checked")?.value;
+  if (type === null) {
+    alert("Please select a type.");
+    return;
+  }
+
   const lender =
     document.querySelector("input[name='lender']:checked")
       ?.getAttribute("x-user-email");
@@ -167,7 +202,7 @@ async function addRecord() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      type: "PAYMENT", lender, borrowers, amount, remarks
+      type, lender, borrowers, amount, remarks
     }),
   });
   const data = await response.json();

@@ -66,6 +66,8 @@ def add_records() -> tuple[dict[str, Any], int]:
   for key in ["type", "lender", "borrowers", "amount", "remarks"]:
     if key not in req:
       return {"success": False, "error": f"Missing field: {key}"}, 400
+  if req["type"] not in {"DEBT", "PAYMENT"}:
+    return {"success": False, "error": f"Invalid type: {req['type']}"}, 400
 
   lender = req["lender"]
   borrowers = req["borrowers"]
