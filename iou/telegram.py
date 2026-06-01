@@ -3,9 +3,6 @@ from typing import TYPE_CHECKING
 
 import requests
 
-import iou.database as db
-from iou.config import DATABASE
-
 if TYPE_CHECKING:
   from iou.record import Record
   from iou.user import User
@@ -33,8 +30,11 @@ def record_message(
   return message
 
 
-def format_records(records: list[Record], currency: str) -> str:
-  users = db.get_users(DATABASE)
+def format_records(
+  records: list[Record],
+  currency: str,
+  users: list[User],
+) -> str:
   users_by_email = {user.email: user for user in users}
 
   records_by_creator: dict[str, list[Record]] = {}
@@ -59,10 +59,11 @@ def format_records(records: list[Record], currency: str) -> str:
 def announce_records(
   records: list[Record],
   currency: str,
+  users: list[User],
   bot_token: str,
   chat_id: str,
 ) -> None:
-  message = format_records(records, currency)
+  message = format_records(records, currency, users)
   try:
     response = requests.post(
       f"https://api.telegram.org/bot{bot_token}/sendMessage",

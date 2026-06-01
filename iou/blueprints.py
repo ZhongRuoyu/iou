@@ -90,6 +90,7 @@ def get_records() -> dict[str, dict[str, Any]]:
 
 def validate_add_records_request(  # noqa: PLR0911
   req: dict[str, Any],
+  valid_emails: set[str],
 ) -> tuple[bool, str]:
   for key in ["type", "lender", "borrowers", "amount", "remarks"]:
     if key not in req:
@@ -100,15 +101,11 @@ def validate_add_records_request(  # noqa: PLR0911
     return False, "amount must be a positive number"
   if not isinstance(req["borrowers"], list) or not req["borrowers"]:
     return False, "borrowers must be a non-empty list"
-
-  valid_emails = {
-    user.email for user in db.get_users(DATABASE, active_only=True)
-  }
   if req["lender"] not in valid_emails:
     return False, "Unknown lender"
-  unknown = set(req["borrowers"]) - valid_emails
-  if unknown:
-    return False, f"Unknown borrower(s): {unknown}"
+  unknown_borrowers = set(req["borrowers"]) - valid_emails
+  if unknown_borrowers:
+    return False, f"Unknown borrower(s): {unknown_borrowers}"
 
   return True, ""
 
@@ -118,7 +115,10 @@ def add_records() -> tuple[dict[str, Any], int]:
   req = request.get_json()
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
-  valid, error = validate_add_records_request(req)
+
+  users = db.get_users(DATABASE, active_only=True)
+  valid_emails = {u.email for u in users}
+  valid, error = validate_add_records_request(req, valid_emails)
   if not valid:
     return {"success": False, "error": error}, 400
 
@@ -154,7 +154,13 @@ def add_records() -> tuple[dict[str, Any], int]:
   )
 
   if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-    announce_records(records, CURRENCY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+    announce_records(
+      records,
+      CURRENCY,
+      users,
+      TELEGRAM_BOT_TOKEN,
+      TELEGRAM_CHAT_ID,
+    )
 
   return {"success": True}, 200
 
