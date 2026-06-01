@@ -19,8 +19,8 @@ from iou.record import Record
 from iou.telegram import announce_record_status_change, announce_records
 
 API_PREFIX = "/api"
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,9 @@ blueprint = Blueprint(
   "iou",
   __name__,
   url_prefix="",
-  static_folder=str(STATIC_DIR),
-  template_folder=str(TEMPLATES_DIR),
+  static_folder=STATIC_DIR,
+  static_url_path="",
+  template_folder=TEMPLATES_DIR,
 )
 
 

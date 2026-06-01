@@ -1,4 +1,13 @@
+# Python bytecode
 __pycache__
-.env
+
+# Virtual environment
 .venv
+
+# Build files
+build
+*.egg-info
+
+# Runtime files
+.env
 *.db
