@@ -213,18 +213,12 @@ def set_records_active() -> tuple[dict[str, Any], int]:
 
 @api.route("/summary")
 def summary() -> list[dict[str, Any]]:
-  users = db.get_users(DATABASE)
-  records = db.get_records(DATABASE, active_only=True)
-
-  net_balance = {user.email: 0 for user in users}
-  for record in records:
-    net_balance[record.lender] += record.amount
-    net_balance[record.borrower] -= record.amount
+  net_balances = db.get_net_balances(DATABASE)
   creditors = [
-    (email, balance) for email, balance in net_balance.items() if balance > 0
+    (user, balance) for user, balance in net_balances.items() if balance > 0
   ]
   debtors = [
-    (email, -balance) for email, balance in net_balance.items() if balance < 0
+    (user, -balance) for user, balance in net_balances.items() if balance < 0
   ]
   creditors.sort(key=lambda x: x[1], reverse=True)
   debtors.sort(key=lambda x: x[1], reverse=True)
@@ -233,16 +227,16 @@ def summary() -> list[dict[str, Any]]:
   creditor_idx = 0
   debtor_idx = 0
   while creditor_idx < len(creditors) and debtor_idx < len(debtors):
-    creditor_email, credit_amount = creditors[creditor_idx]
-    debtor_email, debt_amount = debtors[debtor_idx]
+    creditor_user, credit_amount = creditors[creditor_idx]
+    debtor_user, debt_amount = debtors[debtor_idx]
 
     transfer_amount = min(credit_amount, debt_amount)
     if transfer_amount > 0:
       transactions.append(
-        {"from": debtor_email, "to": creditor_email, "amount": transfer_amount}
+        {"from": debtor_user, "to": creditor_user, "amount": transfer_amount}
       )
-    creditors[creditor_idx] = (creditor_email, credit_amount - transfer_amount)
-    debtors[debtor_idx] = (debtor_email, debt_amount - transfer_amount)
+    creditors[creditor_idx] = (creditor_user, credit_amount - transfer_amount)
+    debtors[debtor_idx] = (debtor_user, debt_amount - transfer_amount)
 
     if creditors[creditor_idx][1] == 0:
       creditor_idx += 1

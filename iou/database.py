@@ -51,6 +51,30 @@ def init(database: Path) -> None:
           CHECK(amount > 0)
         );
       """)
+    ).execute(
+      dedent("""
+        CREATE VIEW IF NOT EXISTS UserBalances AS
+        WITH Deltas AS (
+          SELECT
+            lender AS user,
+            amount AS delta
+          FROM Records
+          WHERE active = TRUE
+
+          UNION ALL
+
+          SELECT
+            borrower AS user,
+            -amount AS delta
+          FROM Records
+          WHERE active = TRUE
+        )
+        SELECT
+          user,
+          SUM(delta) AS balance
+        FROM Deltas
+        GROUP BY user;
+      """)
     )
 
 
@@ -63,7 +87,7 @@ def get_users(database: Path, *, active_only: bool = False) -> list[User]:
       query += " WHERE active = TRUE"
     query += " ORDER BY name;"
     rows = cur.execute(query).fetchall()
-    return [User.from_db_row(row) for row in rows]
+  return [User.from_db_row(row) for row in rows]
 
 
 def get_records(database: Path, *, active_only: bool = False) -> list[Record]:
@@ -75,7 +99,7 @@ def get_records(database: Path, *, active_only: bool = False) -> list[Record]:
       query += " WHERE active = TRUE"
     query += " ORDER BY id;"
     rows = cur.execute(query).fetchall()
-    return [Record.from_db_row(row) for row in rows]
+  return [Record.from_db_row(row) for row in rows]
 
 
 def add_records(database: Path, records: list[Record]) -> None:
@@ -114,3 +138,11 @@ def set_records_active(
       "UPDATE Records SET active = ? WHERE id = ?;",
       [(active, record_id) for record_id in ids],
     )
+
+
+def get_net_balances(database: Path) -> dict[str, int]:
+  with sqlite3.connect(database) as con:
+    cur = con.cursor()
+    cur.row_factory = dict_factory
+    rows = cur.execute("SELECT * FROM UserBalances;").fetchall()
+  return {row["user"]: row["balance"] for row in rows}
