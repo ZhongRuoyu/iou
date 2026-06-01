@@ -1,6 +1,9 @@
 [project]
 name = "iou"
 version = "0.1.0"
+authors = [{ name = "Ruoyu Zhong", email = "zhongruoyu@outlook.com" }]
+description = "I Owe You: Bill splitter and tracker."
+readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.13"
@@ -10,6 +13,25 @@ dependencies = [
   "gunicorn>=26.0.0",
   "requests>=2.34.2",
 ]
+keywords = ["bill splitter"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Framework :: Flask",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/ZhongRuoyu/iou"
+Repository = "https://github.com/ZhongRuoyu/iou.git"
 
 [project.scripts]
 iou-dump = "iou.scripts.iou_dump:main"
