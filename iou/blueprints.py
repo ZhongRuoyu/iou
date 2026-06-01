@@ -6,7 +6,13 @@ from typing import Any
 from flask import Blueprint, Response, render_template, request
 
 import iou.database as db
-from iou.config import CURRENCY, DATABASE, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from iou.config import (
+  CURRENCY,
+  DATABASE,
+  REQUEST_EMAIL_HEADER,
+  TELEGRAM_BOT_TOKEN,
+  TELEGRAM_CHAT_ID,
+)
 from iou.record import Record
 from iou.telegram import announce_records
 
@@ -23,6 +29,14 @@ def init() -> None:
 
 def ceildiv(a: int, b: int) -> int:
   return -(a // -b)
+
+
+def get_requester() -> str:
+  if REQUEST_EMAIL_HEADER:
+    email = request.headers.get(REQUEST_EMAIL_HEADER)
+    if email:
+      return email
+  return request.remote_addr or "unknown"
 
 
 blueprint = Blueprint(
@@ -85,11 +99,7 @@ def add_records() -> tuple[dict[str, Any], int]:
   req_type = req["type"]
   lender = req["lender"]
   borrowers = req["borrowers"]
-  created_by = (
-    request.headers.get("cf-access-authenticated-user-email")
-    or request.remote_addr
-    or "unknown"
-  )
+  created_by = get_requester()
   created_at = dt.datetime.now(tz=dt.UTC)
   records = [
     Record(
