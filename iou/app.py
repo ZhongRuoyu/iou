@@ -2,6 +2,7 @@ import datetime as dt
 import logging
 import sqlite3
 import threading
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -98,17 +99,40 @@ def validate_add_records_request(  # noqa: PLR0911
   for key in ["type", "lender", "borrowers", "amount", "remarks"]:
     if key not in req:
       return False, f"Missing field: {key}"
-  if req["type"] not in {"DEBT", "PAYMENT"}:
-    return False, f"Invalid type: {req['type']}"
-  if not isinstance(req["amount"], (int, float)) or req["amount"] <= 0:
+
+  req_type = req["type"]
+  if not isinstance(req_type, str) or req_type not in {"DEBT", "PAYMENT"}:
+    return False, 'type must be either "DEBT" or "PAYMENT"'
+
+  lender = req["lender"]
+  if not isinstance(lender, str):
+    return False, "lender must be a string"
+
+  borrowers = req["borrowers"]
+  if (
+    not isinstance(borrowers, list)
+    or not borrowers
+    or not all(isinstance(borrower, str) for borrower in borrowers)
+  ):
+    return False, "borrowers must be a non-empty list of strings"
+
+  amount = req["amount"]
+  if not isinstance(amount, (int, float)) or amount <= 0:
     return False, "amount must be a positive number"
-  if not isinstance(req["borrowers"], list) or not req["borrowers"]:
-    return False, "borrowers must be a non-empty list"
-  if req["lender"] not in valid_emails:
-    return False, "Unknown lender"
-  unknown_borrowers = set(req["borrowers"]) - valid_emails
-  if unknown_borrowers:
-    return False, f"Unknown borrower(s): {unknown_borrowers}"
+
+  remarks = req["remarks"]
+  if not isinstance(remarks, str) and remarks is not None:
+    return False, "remarks must be a string or null"
+
+  if lender not in valid_emails:
+    return False, f"Unknown lender: {escape(lender)}"
+
+  if unknown_borrowers := set(borrowers) - valid_emails:
+    borrowers_str = escape(
+      # https://github.com/astral-sh/ty/issues/521
+      ", ".join(email for email in unknown_borrowers),  # ty:ignore[no-matching-overload]
+    )
+    return False, f"Unknown borrower(s): {borrowers_str}"
 
   return True, ""
 
@@ -128,17 +152,19 @@ def add_records() -> tuple[dict[str, Any], int]:
   req_type = req["type"]
   lender = req["lender"]
   borrowers = req["borrowers"]
+  each_amount = ceildiv(req["amount"], len(borrowers))
   created_by = get_requester()
   created_at = dt.datetime.now(tz=dt.UTC)
+  remarks = req["remarks"]
   records = [
     Record(
       type=req_type,
       lender=lender,
       borrower=borrower,
-      amount=ceildiv(req["amount"], len(borrowers)),
+      amount=each_amount,
       created_by=created_by,
       created_at=created_at,
-      remarks=req["remarks"],
+      remarks=remarks,
     )
     for borrower in borrowers
     if borrower != lender
