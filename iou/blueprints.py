@@ -1,5 +1,6 @@
 import datetime as dt
 import logging
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -87,14 +88,39 @@ def get_records() -> dict[str, dict[str, Any]]:
   return {str(record.id): record.asdict() for record in records}
 
 
+def validate_add_records_request(  # noqa: PLR0911
+  req: dict[str, Any],
+) -> tuple[bool, str]:
+  for key in ["type", "lender", "borrowers", "amount", "remarks"]:
+    if key not in req:
+      return False, f"Missing field: {key}"
+  if req["type"] not in {"DEBT", "PAYMENT"}:
+    return False, f"Invalid type: {req['type']}"
+  if not isinstance(req["amount"], (int, float)) or req["amount"] <= 0:
+    return False, "amount must be a positive number"
+  if not isinstance(req["borrowers"], list) or not req["borrowers"]:
+    return False, "borrowers must be a non-empty list"
+
+  valid_emails = {
+    user.email for user in db.get_users(DATABASE, active_only=True)
+  }
+  if req["lender"] not in valid_emails:
+    return False, "Unknown lender"
+  unknown = set(req["borrowers"]) - valid_emails
+  if unknown:
+    return False, f"Unknown borrower(s): {unknown}"
+
+  return True, ""
+
+
 @api.route("/records", methods=["POST"])
 def add_records() -> tuple[dict[str, Any], int]:
   req = request.get_json()
-  for key in ["type", "lender", "borrowers", "amount", "remarks"]:
-    if key not in req:
-      return {"success": False, "error": f"Missing field: {key}"}, 400
-  if req["type"] not in {"DEBT", "PAYMENT"}:
-    return {"success": False, "error": f"Invalid type: {req['type']}"}, 400
+  if not req:
+    return {"success": False, "error": "Request body must be JSON"}, 400
+  valid, error = validate_add_records_request(req)
+  if not valid:
+    return {"success": False, "error": error}, 400
 
   req_type = req["type"]
   lender = req["lender"]
@@ -115,7 +141,11 @@ def add_records() -> tuple[dict[str, Any], int]:
     if borrower != lender
   ]
 
-  db.add_records(DATABASE, records)
+  try:
+    db.add_records(DATABASE, records)
+  except sqlite3.Error:
+    logger.exception("Database error in add_records")
+    return {"success": False, "error": "Database error"}, 500
   logger.info(
     "Added %d record(s) of type %s by %s",
     len(records),

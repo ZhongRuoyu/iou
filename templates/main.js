@@ -1,6 +1,19 @@
 const api = "/api";
 const currency = "{{ currency or 'USD' }}";
 
+function showAlert(message, type = "danger") {
+  const container = document.getElementById("alerts");
+  container.innerHTML = "";
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML =
+    `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"
+        aria-label="Close"></button>
+    </div>`;
+  container.appendChild(wrapper);
+}
+
 function formatCurrency(amount) {
   return Intl.NumberFormat(navigator.language, {
     style: "currency",
@@ -174,7 +187,7 @@ async function updateSummary() {
       if (response.ok) {
         await updateSummary();
       } else {
-        alert(`Failed to settle: ${data.error || response.statusText}`);
+        showAlert(`Failed to settle: ${data.error || response.statusText}`);
         settleBtn.disabled = false;
         settleBtn.textContent = "Settle";
       }
@@ -187,7 +200,7 @@ async function addRecord() {
   const type =
     document.querySelector("input[name='type']:checked")?.value;
   if (type === null) {
-    alert("Please select a type.");
+    showAlert("Please select a type.", "warning");
     return;
   }
 
@@ -195,7 +208,7 @@ async function addRecord() {
     document.querySelector("input[name='lender']:checked")
       ?.getAttribute("x-user-email");
   if (lender === null) {
-    alert("Please select a lender.");
+    showAlert("Please select a lender.", "warning");
     return;
   }
 
@@ -205,17 +218,17 @@ async function addRecord() {
   ]
     .map(node => node.getAttribute("x-user-email"));
   if (borrowers.length === 0) {
-    alert("Please select at least one borrower.");
+    showAlert("Please select at least one borrower.", "warning");
     return;
   }
   if (borrowers.length === 1 && borrowers.includes(lender)) {
-    alert("Lender cannot be the only borrower.");
+    showAlert("Lender cannot be the only borrower.", "warning");
     return;
   }
 
   const amount = +document.getElementById("amount").value * 100;
   if (isNaN(amount)) {
-    alert("Please enter a valid amount.");
+    showAlert("Please enter a valid amount.", "warning");
     return;
   }
 
@@ -234,10 +247,10 @@ async function addRecord() {
   });
   const data = await response.json();
   if (response.ok) {
-    alert("Record added successfully.");
+    showAlert("Record added successfully.", "success");
     document.getElementById("form-add-record").reset();
   } else {
-    alert(`Failed to add record: ${data.error || response.statusText}`);
+    showAlert(`Failed to add record: ${data.error || response.statusText}`);
   }
 
   addButton.disabled = false;
