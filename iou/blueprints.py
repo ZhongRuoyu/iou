@@ -1,6 +1,7 @@
 import datetime as dt
 import logging
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -154,13 +155,11 @@ def add_records() -> tuple[dict[str, Any], int]:
   )
 
   if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-    announce_records(
-      records,
-      CURRENCY,
-      users,
-      TELEGRAM_BOT_TOKEN,
-      TELEGRAM_CHAT_ID,
-    )
+    threading.Thread(
+      target=announce_records,
+      args=(records, CURRENCY, users, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID),
+      daemon=False,
+    ).start()
 
   return {"success": True}, 200
 
