@@ -34,6 +34,16 @@ blueprint = Blueprint(
 )
 
 
+@blueprint.after_request
+def add_csp(response: Response) -> Response:
+  response.headers["Content-Security-Policy"] = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdnjs.cloudflare.com; "
+    "style-src 'self' https://cdnjs.cloudflare.com; "
+  )
+  return response
+
+
 @blueprint.route("/")
 def index() -> Response:
   return blueprint.send_static_file("index.html")
