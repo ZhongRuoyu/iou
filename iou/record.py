@@ -32,7 +32,7 @@ class Record:
     )
 
   @staticmethod
-  def from_db_row(row: dict[str, Any]) -> Record:
+  def from_db_row(row: dict[str, Any]) -> "Record":
     return Record(
       id=row["id"],
       type=row["type"],
@@ -60,7 +60,7 @@ class Record:
     )
 
   @staticmethod
-  def from_csv_row(row: list[str]) -> Record:
+  def from_csv_row(row: list[str]) -> "Record":
     (
       record_id,
       record_type,

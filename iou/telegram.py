@@ -1,11 +1,9 @@
 import logging
-from typing import TYPE_CHECKING
 
 import requests
 
-if TYPE_CHECKING:
-  from iou.record import Record
-  from iou.user import User
+from iou.record import Record
+from iou.user import User
 
 logger = logging.getLogger(__name__)
 

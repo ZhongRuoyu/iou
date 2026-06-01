@@ -11,7 +11,7 @@ class User:
   active: bool = True
 
   @staticmethod
-  def from_db_row(row: dict[str, Any]) -> User:
+  def from_db_row(row: dict[str, Any]) -> "User":
     return User(
       email=row["email"],
       name=row["name"],
