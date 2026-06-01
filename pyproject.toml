@@ -11,6 +11,10 @@ dependencies = [
   "requests>=2.34.2",
 ]
 
+[project.scripts]
+iou-dump = "iou.scripts.iou_dump:main"
+iou-users = "iou.scripts.iou_users:main"
+
 [dependency-groups]
 dev = ["ruff>=0.15.14", "ty>=0.0.39"]
 

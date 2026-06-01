@@ -67,7 +67,7 @@ def cmd_set_active(email: str, *, active: bool) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
   parser = argparse.ArgumentParser(
-    prog="iou-users.py",
+    prog="iou-users",
     description="Manage users in the IOU bill splitter database.",
   )
 
