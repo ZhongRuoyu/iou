@@ -1,6 +1,8 @@
 [project]
 name = "iou"
 version = "0.1.0"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = [
   "flask>=3.1.3",
