@@ -1,5 +1,17 @@
-__pycache__
-.env
+# Git
 .git
+
+# Python bytecode
+__pycache__
+
+# Virtual environment
 .venv
+
+# Build files
+build
+*.egg-info
+
+# Runtime files
+.env
+*.csv
 *.db
