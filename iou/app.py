@@ -22,7 +22,6 @@ from iou.telegram import announce_record_status_change, announce_records
 
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
 logger = logging.getLogger(__name__)
 
