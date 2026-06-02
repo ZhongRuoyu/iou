@@ -13,7 +13,7 @@ dependencies = [
   "gunicorn>=26.0.0",
   "requests>=2.34.2",
 ]
-keywords = ["bill splitter"]
+keywords = ["bill tracking", "bill splitting", "bill tracker", "bill splitter"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
