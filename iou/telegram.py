@@ -2,8 +2,8 @@ import logging
 
 import requests
 
-from iou.record import Record
-from iou.user import User
+from .record import Record
+from .user import User
 
 logger = logging.getLogger(__name__)
 

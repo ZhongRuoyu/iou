@@ -4,11 +4,11 @@ from typing import TypedDict, cast
 
 from flask import current_app
 
-import iou.database as db
-from iou.config import AppConfigItems
-from iou.record import AggregatedRecord, Record
-from iou.telegram import announce_record_status_change, announce_records
-from iou.user import User
+from . import database
+from .config import AppConfigItems
+from .record import AggregatedRecord, Record
+from .telegram import announce_record_status_change, announce_records
+from .user import User
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +25,19 @@ def app_config() -> AppConfigItems:
 
 def get_active_users() -> list[User]:
   """Return all active users."""
-  return db.get_users(app_config()["DATABASE"], active_only=True)
+  return database.get_users(app_config()["DATABASE"], active_only=True)
 
 
 def get_records() -> list[Record]:
   """Return all records."""
-  return db.get_records(app_config()["DATABASE"])
+  return database.get_records(app_config()["DATABASE"])
 
 
 def add_records(record: AggregatedRecord) -> None:
   """Create new records and trigger notifications."""
   config = app_config()
   records = record.to_records()
-  db.add_records(config["DATABASE"], records)
+  database.add_records(config["DATABASE"], records)
   logger.info(
     "Added %d record(s) of type %s by %s",
     len(records),
@@ -69,13 +69,13 @@ def set_records_active(
 ) -> None:
   """Activate or cancel records and trigger notifications."""
   config = app_config()
-  db.set_records_active(config["DATABASE"], ids, active=active)
+  database.set_records_active(config["DATABASE"], ids, active=active)
   action = "activated" if active else "canceled"
   logger.info("%d records %s by %s", len(ids), action, requester)
 
   if config["TELEGRAM_BOT_TOKEN"] and config["TELEGRAM_CHAT_ID"]:
     records = [record for record in get_records() if record.id in set(ids)]
-    users = db.get_users(config["DATABASE"])
+    users = database.get_users(config["DATABASE"])
     threading.Thread(
       target=announce_record_status_change,
       args=(
@@ -93,7 +93,7 @@ def set_records_active(
 
 def get_summary() -> list[SummaryTransaction]:
   """Return a minimized transfer plan from current balances."""
-  net_balances = db.get_net_balances(app_config()["DATABASE"])
+  net_balances = database.get_net_balances(app_config()["DATABASE"])
   creditors = [
     (user, balance) for user, balance in net_balances.items() if balance > 0
   ]

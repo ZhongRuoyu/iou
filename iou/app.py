@@ -6,10 +6,9 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, Response, current_app, request
 
-import iou.database as db
-import iou.iou as service
-from iou.config import AppConfigItems
-from iou.record import AggregatedRecord
+from . import database, iou
+from .config import AppConfigItems
+from .record import AggregatedRecord
 
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -29,7 +28,7 @@ def init(app: Flask) -> None:
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     level=getattr(logging, config["LOG_LEVEL"], logging.INFO),
   )
-  db.init(config["DATABASE"])
+  database.init(config["DATABASE"])
 
 
 def get_requester() -> str:
@@ -82,14 +81,14 @@ def get_config() -> dict[str, Any]:
 @api.route("/users")
 def get_users() -> list[dict[str, Any]]:
   """Return active users for UI selection."""
-  users = db.get_users(app_config()["DATABASE"], active_only=True)
+  users = database.get_users(app_config()["DATABASE"], active_only=True)
   return [user.asdict() for user in users]
 
 
 @api.route("/records")
 def get_records() -> dict[str, dict[str, Any]]:
   """Return all records keyed by record ID as strings."""
-  records = db.get_records(app_config()["DATABASE"])
+  records = database.get_records(app_config()["DATABASE"])
   return {str(record.id): record.asdict() for record in records}
 
 
@@ -146,7 +145,7 @@ def add_records() -> tuple[dict[str, Any], int]:
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
 
-  users = db.get_users(app_config()["DATABASE"], active_only=True)
+  users = database.get_users(app_config()["DATABASE"], active_only=True)
   valid_emails = {u.email for u in users}
   valid, error = validate_add_records_request(req, valid_emails)
   if not valid:
@@ -161,7 +160,7 @@ def add_records() -> tuple[dict[str, Any], int]:
     remarks=req["remarks"],
   )
   try:
-    service.add_records(record)
+    iou.add_records(record)
   except sqlite3.Error:
     logger.exception("Database error in add_records")
     return {"success": False, "error": "Database error"}, 500
@@ -187,7 +186,7 @@ def set_records_active() -> tuple[dict[str, Any], int]:
     return {"success": False, "error": "active must be a boolean"}, 400
 
   try:
-    service.set_records_active(
+    iou.set_records_active(
       ids,
       active=active,
       requester=get_requester(),
@@ -200,6 +199,6 @@ def set_records_active() -> tuple[dict[str, Any], int]:
 
 
 @api.route("/summary")
-def summary() -> list[service.SummaryTransaction]:
+def summary() -> list[iou.SummaryTransaction]:
   """Return settlement transactions computed from net balances."""
-  return service.get_summary()
+  return iou.get_summary()

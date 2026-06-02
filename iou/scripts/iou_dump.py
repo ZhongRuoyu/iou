@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-import iou.database as db
+import iou.database
 from iou.record import Record
 
 
@@ -52,7 +52,7 @@ def main() -> int:
     print(f"Error: Database file {database} not found")
     return 1
 
-  records = db.get_records(database)
+  records = iou.database.get_records(database)
   dump_records(records, output)
   print(f"Successfully dumped {len(records)} records to {output}")
   return 0

@@ -8,14 +8,14 @@ from pathlib import Path
 from iou.user import User
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-import iou.database as db
+import iou.database
 
 
 def create_user(database: Path, email: str, name: str) -> int:
   """Create a user and print the created user's email on success."""
   user = User(email, name)
   try:
-    db.add_user(database, user)
+    iou.database.add_user(database, user)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -26,7 +26,7 @@ def create_user(database: Path, email: str, name: str) -> int:
 
 def list_users(database: Path) -> int:
   """Print all users in a fixed-width table."""
-  users = db.get_users(database)
+  users = iou.database.get_users(database)
   if not users:
     print("No users found.")
     return 0
@@ -60,7 +60,7 @@ def list_users(database: Path) -> int:
 def set_active(database: Path, email: str, *, active: bool) -> int:
   """Set a user's active status and print the email on success."""
   try:
-    count = db.set_user_active(database, email, active=active)
+    count = iou.database.set_user_active(database, email, active=active)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1

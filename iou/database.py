@@ -3,8 +3,8 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Any
 
-from iou.record import Record
-from iou.user import User
+from .record import Record
+from .user import User
 
 
 def dict_factory(
