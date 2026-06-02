@@ -5,7 +5,7 @@ from typing import Any
 
 @dataclass(slots=True)
 class Record:
-  """A record of an IOU transaction."""
+  """A record representing a single transaction between two users."""
 
   type: str
   lender: str
@@ -112,3 +112,40 @@ class Record:
       "remarks": self.remarks,
       "active": self.active,
     }
+
+
+def ceildiv(a: float, b: int) -> int:
+  """Divide ``a`` by ``b`` and round up."""
+  return int(-(a // -b))
+
+
+@dataclass(slots=True)
+class AggregatedRecord:
+  """
+  An aggregated record representing a single transaction that involves possibly
+  multiple users.
+  """
+
+  type: str
+  lender: str
+  borrowers: list[str]
+  amount: int
+  created_by: str
+  remarks: str | None
+
+  def to_records(self) -> list[Record]:
+    each_amount = ceildiv(self.amount, len(self.borrowers))
+    created_at = dt.datetime.now(tz=dt.timezone.utc)
+    return [
+      Record(
+        type=self.type,
+        lender=self.lender,
+        borrower=borrower,
+        amount=each_amount,
+        created_by=self.created_by,
+        created_at=created_at,
+        remarks=self.remarks,
+      )
+      for borrower in self.borrowers
+      if borrower != self.lender
+    ]

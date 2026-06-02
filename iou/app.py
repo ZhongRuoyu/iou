@@ -1,7 +1,5 @@
-import datetime as dt
 import logging
 import sqlite3
-import threading
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -9,16 +7,14 @@ from typing import Any
 from flask import Blueprint, Response, request
 
 import iou.database as db
+import iou.iou as service
 from iou.config import (
   CURRENCY,
   DATABASE,
   LOG_LEVEL,
   REQUEST_EMAIL_HEADER,
-  TELEGRAM_BOT_TOKEN,
-  TELEGRAM_CHAT_ID,
 )
-from iou.record import Record
-from iou.telegram import announce_record_status_change, announce_records
+from iou.record import AggregatedRecord
 
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -32,10 +28,6 @@ def init() -> None:
     level=getattr(logging, LOG_LEVEL, logging.INFO),
   )
   db.init(DATABASE)
-
-
-def ceildiv(a: int, b: int) -> int:
-  return -(a // -b)
 
 
 def get_requester() -> str:
@@ -149,45 +141,19 @@ def add_records() -> tuple[dict[str, Any], int]:
   if not valid:
     return {"success": False, "error": error}, 400
 
-  req_type = req["type"]
-  lender = req["lender"]
-  borrowers = req["borrowers"]
-  each_amount = ceildiv(req["amount"], len(borrowers))
-  created_by = get_requester()
-  created_at = dt.datetime.now(tz=dt.timezone.utc)
-  remarks = req["remarks"]
-  records = [
-    Record(
-      type=req_type,
-      lender=lender,
-      borrower=borrower,
-      amount=each_amount,
-      created_by=created_by,
-      created_at=created_at,
-      remarks=remarks,
-    )
-    for borrower in borrowers
-    if borrower != lender
-  ]
-
+  record = AggregatedRecord(
+    type=req["type"],
+    lender=req["lender"],
+    borrowers=req["borrowers"],
+    amount=req["amount"],
+    created_by=get_requester(),
+    remarks=req["remarks"],
+  )
   try:
-    db.add_records(DATABASE, records)
+    service.add_records(record)
   except sqlite3.Error:
     logger.exception("Database error in add_records")
     return {"success": False, "error": "Database error"}, 500
-  logger.info(
-    "Added %d record(s) of type %s by %s",
-    len(records),
-    req_type,
-    created_by,
-  )
-
-  if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-    threading.Thread(
-      target=announce_records,
-      args=(records, CURRENCY, users, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID),
-      daemon=False,
-    ).start()
 
   return {"success": True}, 200
 
@@ -197,6 +163,7 @@ def set_records_active() -> tuple[dict[str, Any], int]:
   req = request.get_json()
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
+
   ids = req.get("ids", [])
   active = req.get("active")
   if not ids or not all(isinstance(i, int) for i in ids):
@@ -208,66 +175,18 @@ def set_records_active() -> tuple[dict[str, Any], int]:
     return {"success": False, "error": "active must be a boolean"}, 400
 
   try:
-    db.set_records_active(DATABASE, ids, active=active)
+    service.set_records_active(
+      ids,
+      active=active,
+      requester=get_requester(),
+    )
   except sqlite3.Error:
     logger.exception("Database error in set_records_active")
     return {"success": False, "error": "Database error"}, 500
-  action = "activated" if active else "canceled"
-  requester = get_requester()
-  logger.info("%d records %s by %s", len(ids), action, requester)
-
-  if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-    records = [r for r in db.get_records(DATABASE) if r.id in set(ids)]
-    users = db.get_users(DATABASE)
-    threading.Thread(
-      target=announce_record_status_change,
-      args=(
-        records,
-        CURRENCY,
-        users,
-        requester,
-        TELEGRAM_BOT_TOKEN,
-        TELEGRAM_CHAT_ID,
-      ),
-      kwargs={
-        "active": active,
-      },
-      daemon=False,
-    ).start()
 
   return {"success": True}, 200
 
 
 @api.route("/summary")
-def summary() -> list[dict[str, Any]]:
-  net_balances = db.get_net_balances(DATABASE)
-  creditors = [
-    (user, balance) for user, balance in net_balances.items() if balance > 0
-  ]
-  debtors = [
-    (user, -balance) for user, balance in net_balances.items() if balance < 0
-  ]
-  creditors.sort(key=lambda x: x[1], reverse=True)
-  debtors.sort(key=lambda x: x[1], reverse=True)
-
-  transactions = []
-  creditor_idx = 0
-  debtor_idx = 0
-  while creditor_idx < len(creditors) and debtor_idx < len(debtors):
-    creditor_user, credit_amount = creditors[creditor_idx]
-    debtor_user, debt_amount = debtors[debtor_idx]
-
-    transfer_amount = min(credit_amount, debt_amount)
-    if transfer_amount > 0:
-      transactions.append(
-        {"from": debtor_user, "to": creditor_user, "amount": transfer_amount}
-      )
-    creditors[creditor_idx] = (creditor_user, credit_amount - transfer_amount)
-    debtors[debtor_idx] = (debtor_user, debt_amount - transfer_amount)
-
-    if creditors[creditor_idx][1] == 0:
-      creditor_idx += 1
-    if debtors[debtor_idx][1] == 0:
-      debtor_idx += 1
-
-  return transactions
+def summary() -> list[service.SummaryTransaction]:
+  return service.get_summary()
