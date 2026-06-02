@@ -10,6 +10,15 @@ class User:
   name: str
   active: bool = True
 
+  def to_insert_values(
+    self,
+  ) -> tuple[str, str, bool]:
+    return (
+      self.email,
+      self.name,
+      self.active,
+    )
+
   @staticmethod
   def from_db_row(row: dict[str, Any]) -> "User":
     return User(

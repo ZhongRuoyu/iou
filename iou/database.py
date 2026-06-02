@@ -88,12 +88,12 @@ def get_users(database: Path, *, active_only: bool = False) -> list[User]:
   return [User.from_db_row(row) for row in rows]
 
 
-def add_user(database: Path, email: str, name: str) -> None:
+def add_user(database: Path, user: User) -> None:
   with sqlite3.connect(database) as con:
     cur = con.cursor()
     cur.execute(
-      "INSERT INTO Users(email, name, active) VALUES(?, ?, TRUE);",
-      (email, name),
+      "INSERT INTO Users(email, name, active) VALUES(?, ?, ?);",
+      user.to_insert_values(),
     )
 
 

@@ -5,19 +5,22 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from iou.user import User
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import iou.database as db
 from iou.config import DATABASE
 
 
 def create_user(database: Path, email: str, name: str) -> int:
+  user = User(email, name)
   try:
-    db.add_user(database, email, name)
+    db.add_user(database, user)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
 
-  print(email)
+  print(user.email)
   return 0
 
 
