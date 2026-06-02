@@ -2,18 +2,13 @@ import logging
 import sqlite3
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Flask, Response, current_app, request
 
 import iou.database as db
 import iou.iou as service
-from iou.config import (
-  CURRENCY,
-  DATABASE,
-  LOG_LEVEL,
-  REQUEST_EMAIL_HEADER,
-)
+from iou.config import AppConfigItems
 from iou.record import AggregatedRecord
 
 API_PREFIX = "/api"
@@ -22,17 +17,23 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 logger = logging.getLogger(__name__)
 
 
-def init() -> None:
+def app_config() -> AppConfigItems:
+  return cast("AppConfigItems", current_app.config)
+
+
+def init(app: Flask) -> None:
+  config = cast("AppConfigItems", app.config)
   logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    level=getattr(logging, config["LOG_LEVEL"], logging.INFO),
   )
-  db.init(DATABASE)
+  db.init(config["DATABASE"])
 
 
 def get_requester() -> str:
-  if REQUEST_EMAIL_HEADER:
-    email = request.headers.get(REQUEST_EMAIL_HEADER)
+  request_email_header = app_config()["REQUEST_EMAIL_HEADER"]
+  if request_email_header:
+    email = request.headers.get(request_email_header)
     if email:
       return email
   return request.remote_addr or "unknown"
@@ -69,18 +70,18 @@ app.register_blueprint(api)
 
 @api.route("/config")
 def get_config() -> dict[str, Any]:
-  return {"currency": CURRENCY}
+  return {"currency": app_config()["CURRENCY"]}
 
 
 @api.route("/users")
 def get_users() -> list[dict[str, Any]]:
-  users = db.get_users(DATABASE, active_only=True)
+  users = db.get_users(app_config()["DATABASE"], active_only=True)
   return [user.asdict() for user in users]
 
 
 @api.route("/records")
 def get_records() -> dict[str, dict[str, Any]]:
-  records = db.get_records(DATABASE)
+  records = db.get_records(app_config()["DATABASE"])
   return {str(record.id): record.asdict() for record in records}
 
 
@@ -135,7 +136,7 @@ def add_records() -> tuple[dict[str, Any], int]:
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
 
-  users = db.get_users(DATABASE, active_only=True)
+  users = db.get_users(app_config()["DATABASE"], active_only=True)
   valid_emails = {u.email for u in users}
   valid, error = validate_add_records_request(req, valid_emails)
   if not valid:

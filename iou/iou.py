@@ -1,14 +1,11 @@
 import logging
 import threading
-from typing import TypedDict
+from typing import TypedDict, cast
+
+from flask import current_app
 
 import iou.database as db
-from iou.config import (
-  CURRENCY,
-  DATABASE,
-  TELEGRAM_BOT_TOKEN,
-  TELEGRAM_CHAT_ID,
-)
+from iou.config import AppConfigItems
 from iou.record import AggregatedRecord, Record
 from iou.telegram import announce_record_status_change, announce_records
 from iou.user import User
@@ -21,21 +18,26 @@ SummaryTransaction = TypedDict(
 )
 
 
+def app_config() -> AppConfigItems:
+  return cast("AppConfigItems", current_app.config)
+
+
 def get_active_users() -> list[User]:
   """Return all active users."""
-  return db.get_users(DATABASE, active_only=True)
+  return db.get_users(app_config()["DATABASE"], active_only=True)
 
 
 def get_records() -> list[Record]:
   """Return all records."""
-  return db.get_records(DATABASE)
+  return db.get_records(app_config()["DATABASE"])
 
 
 def add_records(record: AggregatedRecord) -> None:
   """Create new records and trigger notifications."""
 
+  config = app_config()
   records = record.to_records()
-  db.add_records(DATABASE, records)
+  db.add_records(config["DATABASE"], records)
   logger.info(
     "Added %d record(s) of type %s by %s",
     len(records),
@@ -43,12 +45,18 @@ def add_records(record: AggregatedRecord) -> None:
     record.created_by,
   )
 
-  if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+  if config["TELEGRAM_BOT_TOKEN"] and config["TELEGRAM_CHAT_ID"]:
     users = get_active_users()
 
     threading.Thread(
       target=announce_records,
-      args=(records, CURRENCY, users, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID),
+      args=(
+        records,
+        config["CURRENCY"],
+        users,
+        config["TELEGRAM_BOT_TOKEN"],
+        config["TELEGRAM_CHAT_ID"],
+      ),
       daemon=False,
     ).start()
 
@@ -61,22 +69,23 @@ def set_records_active(
 ) -> None:
   """Activate or cancel records and trigger notifications."""
 
-  db.set_records_active(DATABASE, ids, active=active)
+  config = app_config()
+  db.set_records_active(config["DATABASE"], ids, active=active)
   action = "activated" if active else "canceled"
   logger.info("%d records %s by %s", len(ids), action, requester)
 
-  if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+  if config["TELEGRAM_BOT_TOKEN"] and config["TELEGRAM_CHAT_ID"]:
     records = [record for record in get_records() if record.id in set(ids)]
-    users = db.get_users(DATABASE)
+    users = db.get_users(config["DATABASE"])
     threading.Thread(
       target=announce_record_status_change,
       args=(
         records,
-        CURRENCY,
+        config["CURRENCY"],
         users,
         requester,
-        TELEGRAM_BOT_TOKEN,
-        TELEGRAM_CHAT_ID,
+        config["TELEGRAM_BOT_TOKEN"],
+        config["TELEGRAM_CHAT_ID"],
       ),
       kwargs={"active": active},
       daemon=False,
@@ -85,7 +94,7 @@ def set_records_active(
 
 def get_summary() -> list[SummaryTransaction]:
   """Return a minimized transfer plan from current balances."""
-  net_balances = db.get_net_balances(DATABASE)
+  net_balances = db.get_net_balances(app_config()["DATABASE"])
   creditors = [
     (user, balance) for user, balance in net_balances.items() if balance > 0
   ]
