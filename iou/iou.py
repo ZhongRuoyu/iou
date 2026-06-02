@@ -35,7 +35,6 @@ def get_records() -> list[Record]:
 
 def add_records(record: AggregatedRecord) -> None:
   """Create new records and trigger notifications."""
-
   config = app_config()
   records = record.to_records()
   db.add_records(config["DATABASE"], records)
@@ -69,7 +68,6 @@ def set_records_active(
   requester: str,
 ) -> None:
   """Activate or cancel records and trigger notifications."""
-
   config = app_config()
   db.set_records_active(config["DATABASE"], ids, active=active)
   action = "activated" if active else "canceled"
