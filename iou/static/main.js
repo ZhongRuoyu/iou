@@ -1,4 +1,4 @@
-const api = "/api";
+const api = "api";
 
 function showAlert(message, type = "danger") {
   const container = document.getElementById("alerts");

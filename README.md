@@ -53,6 +53,26 @@ flask --app iou run
 gunicorn "iou:create_app()"
 ```
 
+### App factory customization
+
+The application exposes an app factory, `create_app`, with two optional
+keyword arguments:
+
+- `url_prefix`: Prefix all registered routes (e.g. `"/iou"`).
+- `api_only`: Register only the API blueprint (skip the bundled UI).
+
+For example, to run API-only routes under `/iou`:
+
+```sh
+# With Flask
+uv run flask --app "iou:create_app(api_only=True, url_prefix='/iou')" run
+
+# With gunicorn
+uv run gunicorn "iou:create_app(api_only=True, url_prefix='/iou')"
+```
+
+With this configuration, API endpoints are served under `/iou/...`.
+
 ### Environment variables
 
 The application can be configured with the following environment variables:

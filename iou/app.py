@@ -46,7 +46,7 @@ def get_requester() -> str:
   return request.remote_addr or "unknown"
 
 
-blueprint = Blueprint(
+app = Blueprint(
   "iou",
   __name__,
   url_prefix="",
@@ -55,7 +55,7 @@ blueprint = Blueprint(
 )
 
 
-@blueprint.after_request
+@app.after_request
 def add_csp(response: Response) -> Response:
   response.headers["Content-Security-Policy"] = (
     "default-src 'self'; "
@@ -66,13 +66,13 @@ def add_csp(response: Response) -> Response:
   return response
 
 
-@blueprint.route("/")
+@app.route("/")
 def index() -> Response:
-  return blueprint.send_static_file("index.html")
+  return app.send_static_file("index.html")
 
 
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
-blueprint.register_blueprint(api)
+app.register_blueprint(api)
 
 
 @api.route("/config")
