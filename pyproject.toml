@@ -43,9 +43,6 @@ dev = ["ruff>=0.15.14", "ty>=0.0.39"]
 requires = ["uv_build>=0.11.16,<0.12"]
 build-backend = "uv_build"
 
-[tool.setuptools.package-data]
-iou = ["static/**/*", "templates/**/*"]
-
 [tool.uv]
 exclude-newer = "P7D"
 
