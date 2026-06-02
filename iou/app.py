@@ -6,7 +6,7 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
-from flask import Blueprint, Response, render_template, request
+from flask import Blueprint, Response, request
 
 import iou.database as db
 from iou.config import (
@@ -48,7 +48,6 @@ blueprint = Blueprint(
   url_prefix="",
   static_folder=STATIC_DIR,
   static_url_path="",
-  template_folder=TEMPLATES_DIR,
 )
 
 
@@ -68,16 +67,13 @@ def index() -> Response:
   return blueprint.send_static_file("index.html")
 
 
-@blueprint.route("/main.js")
-def main_js() -> Response:
-  return Response(
-    render_template("main.js", currency=CURRENCY),
-    mimetype="text/javascript",
-  )
-
-
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 blueprint.register_blueprint(api)
+
+
+@api.route("/config")
+def get_config() -> dict[str, Any]:
+  return {"currency": CURRENCY}
 
 
 @api.route("/users")

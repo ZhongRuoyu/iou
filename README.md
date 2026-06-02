@@ -102,6 +102,7 @@ standard gunicorn options; run with `--help` for details.
 
 The server exposes the following API endpoints:
 
+- `GET /api/config`: Get application configuration (e.g. currency).
 - `GET /api/users`: List all users.
 - `GET /api/records`: List all active and inactive records.
 - `POST /api/records`: Create a new record.

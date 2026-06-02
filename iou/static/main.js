@@ -1,5 +1,4 @@
 const api = "/api";
-const currency = "{{ currency or 'USD' }}";
 
 function showAlert(message, type = "danger") {
   const container = document.getElementById("alerts");
@@ -12,6 +11,12 @@ function showAlert(message, type = "danger") {
         aria-label="Close"></button>
     </div>`;
   container.appendChild(wrapper);
+}
+
+let currency = "USD";
+async function getConfig() {
+  const config = await fetch(`${api}/config`).then(res => res.json());
+  currency = config.currency;
 }
 
 function formatCurrency(amount) {
@@ -318,7 +323,9 @@ async function setRecordsActive(active) {
   }
 }
 
-(() => {
+(async () => {
+  await getConfig();
+
   document.getElementById("input-currency-label").textContent =
     Intl.NumberFormat(navigator.language, {
       style: "currency",
