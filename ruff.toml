@@ -13,3 +13,9 @@ ignore = [
   # flake8-print
   "T20",
 ]
+
+[lint.per-file-ignores]
+"tests/**" = [
+  # assert
+  "S101",
+]

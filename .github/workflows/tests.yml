@@ -52,3 +52,5 @@ jobs:
         run: uvx ruff check
       - name: Run ty type checker
         run: uvx ty check
+      - name: Run tests
+        run: uv run pytest
