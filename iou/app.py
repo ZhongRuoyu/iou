@@ -12,6 +12,7 @@ import iou.database as db
 from iou.config import (
   CURRENCY,
   DATABASE,
+  LOG_LEVEL,
   REQUEST_EMAIL_HEADER,
   TELEGRAM_BOT_TOKEN,
   TELEGRAM_CHAT_ID,
@@ -27,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 
 def init() -> None:
+  logging.basicConfig(
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+  )
   db.init(DATABASE)
 
 

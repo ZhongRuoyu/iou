@@ -22,4 +22,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.14-alpine
 
 COPY --from=builder /app/.venv /app/.venv
-ENTRYPOINT [ "/app/.venv/bin/gunicorn", "iou:app" ]
+ENTRYPOINT [ "/app/.venv/bin/gunicorn", "iou:create_app()" ]

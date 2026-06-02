@@ -35,7 +35,7 @@ uv sync
 # Run the development server
 uv run flask --app iou run
 # Or run the production server with gunicorn
-uv run gunicorn iou:app
+uv run gunicorn "iou:create_app()"
 ```
 
 Or if you prefer pip:
@@ -50,7 +50,7 @@ pip install .
 # Run the development server
 flask --app iou run
 # Or run the production server with gunicorn
-gunicorn iou:app
+gunicorn "iou:create_app()"
 ```
 
 ### Environment variables
