@@ -15,10 +15,10 @@ class AppConfigItems(TypedDict):
 def load_env_config() -> AppConfigItems:
   """Load application config values from environment variables."""
   return {
-    "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO").upper(),
-    "DATABASE": Path(os.getenv("DATABASE", "owe.db")),
-    "CURRENCY": os.getenv("CURRENCY", "USD"),
-    "REQUEST_EMAIL_HEADER": os.getenv("REQUEST_EMAIL_HEADER"),
-    "TELEGRAM_BOT_TOKEN": os.getenv("TELEGRAM_BOT_TOKEN"),
-    "TELEGRAM_CHAT_ID": os.getenv("TELEGRAM_CHAT_ID"),
+    "LOG_LEVEL": os.getenv("OWE_LOG_LEVEL", "INFO").upper(),
+    "DATABASE": Path(os.getenv("OWE_DATABASE", "owe.db")),
+    "CURRENCY": os.getenv("OWE_CURRENCY", "USD"),
+    "REQUEST_EMAIL_HEADER": os.getenv("OWE_REQUEST_EMAIL_HEADER"),
+    "TELEGRAM_BOT_TOKEN": os.getenv("OWE_TELEGRAM_BOT_TOKEN"),
+    "TELEGRAM_CHAT_ID": os.getenv("OWE_TELEGRAM_CHAT_ID"),
   }

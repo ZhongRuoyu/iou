@@ -77,23 +77,23 @@ With this configuration, API endpoints are served under `/owe/...`.
 
 The application can be configured with the following environment variables:
 
-- `LOG_LEVEL`: Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`,
+- `OWE_LOG_LEVEL`: Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`,
   `CRITICAL`).
   Default: `INFO`.
-- `DATABASE`: Path to the SQLite database file.
+- `OWE_DATABASE`: Path to the SQLite database file.
   Default: `owe.db`.
-- `CURRENCY`: ISO 4217 currency code displayed in the UI.
+- `OWE_CURRENCY`: ISO 4217 currency code displayed in the UI.
   Default: `USD`.
-- `REQUEST_EMAIL_HEADER`: HTTP header to trust for the authenticated user's
+- `OWE_REQUEST_EMAIL_HEADER`: HTTP header to trust for the authenticated user's
   email, to be used as the creator of records.
   When run behind Cloudflare Access, this can be set to
   `cf-access-authenticated-user-email` so that the application can identify the
   user by their email address.
   When unset, the remote IP address will be used to identify the user instead.
   Default: unset.
-- `TELEGRAM_BOT_TOKEN`: Telegram bot token for notifications.
+- `OWE_TELEGRAM_BOT_TOKEN`: Telegram bot token for notifications.
   Default: unset.
-- `TELEGRAM_CHAT_ID`: Telegram chat ID for notifications.
+- `OWE_TELEGRAM_CHAT_ID`: Telegram chat ID for notifications.
   Default: unset.
 
 ## Docker
@@ -109,8 +109,8 @@ You may run the application with Docker as follows:
 ```sh
 docker run -p 8000:8000 \
   -v /path/to/data:/data \
-  -e DATABASE=/data/owe.db \
-  -e CURRENCY=USD \
+  -e OWE_DATABASE=/data/owe.db \
+  -e OWE_CURRENCY=USD \
   zhongruoyu/owe:main --bind "0.0.0.0:8000"
 ```
 
