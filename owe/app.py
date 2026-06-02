@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, Response, current_app, request
 
-from . import database, iou
+from . import database, owe
 from .config import AppConfigItems
 from .record import AggregatedRecord
 
@@ -42,7 +42,7 @@ def get_requester() -> str:
 
 
 app = Blueprint(
-  "iou",
+  "owe",
   __name__,
   url_prefix="",
   static_folder=STATIC_DIR,
@@ -81,14 +81,14 @@ def get_config() -> dict[str, Any]:
 @api.route("/users")
 def get_users() -> list[dict[str, Any]]:
   """Return active users for UI selection."""
-  users = iou.get_active_users()
+  users = owe.get_active_users()
   return [user.asdict() for user in users]
 
 
 @api.route("/records")
 def get_records() -> dict[str, dict[str, Any]]:
   """Return all records keyed by record ID as strings."""
-  records = iou.get_records()
+  records = owe.get_records()
   return {str(record.id): record.asdict() for record in records}
 
 
@@ -145,7 +145,7 @@ def add_records() -> tuple[dict[str, Any], int]:
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
 
-  users = iou.get_active_users()
+  users = owe.get_active_users()
   valid_emails = {u.email for u in users}
   valid, error = validate_add_records_request(req, valid_emails)
   if not valid:
@@ -160,7 +160,7 @@ def add_records() -> tuple[dict[str, Any], int]:
     remarks=req["remarks"],
   )
   try:
-    iou.add_records(record)
+    owe.add_records(record)
   except sqlite3.Error:
     logger.exception("Database error in add_records")
     return {"success": False, "error": "Database error"}, 500
@@ -186,7 +186,7 @@ def set_records_active() -> tuple[dict[str, Any], int]:
     return {"success": False, "error": "active must be a boolean"}, 400
 
   try:
-    iou.set_records_active(
+    owe.set_records_active(
       ids,
       active=active,
       requester=get_requester(),
@@ -199,6 +199,6 @@ def set_records_active() -> tuple[dict[str, Any], int]:
 
 
 @api.route("/summary")
-def summary() -> list[iou.SummaryTransaction]:
+def summary() -> list[owe.SummaryTransaction]:
   """Return settlement transactions computed from net balances."""
-  return iou.get_summary()
+  return owe.get_summary()

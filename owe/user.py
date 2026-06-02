@@ -4,7 +4,7 @@ from typing import Any
 
 @dataclass(slots=True)
 class User:
-  """A user in the IOU system."""
+  """A user in the Owe system."""
 
   email: str
   name: str

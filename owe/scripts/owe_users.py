@@ -5,17 +5,17 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from iou.user import User
+from owe.user import User
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-import iou.database
+import owe.database
 
 
 def create_user(database: Path, email: str, name: str) -> int:
   """Create a user and print the created user's email on success."""
   user = User(email, name)
   try:
-    iou.database.add_user(database, user)
+    owe.database.add_user(database, user)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -26,7 +26,7 @@ def create_user(database: Path, email: str, name: str) -> int:
 
 def list_users(database: Path) -> int:
   """Print all users in a fixed-width table."""
-  users = iou.database.get_users(database)
+  users = owe.database.get_users(database)
   if not users:
     print("No users found.")
     return 0
@@ -60,7 +60,7 @@ def list_users(database: Path) -> int:
 def set_active(database: Path, email: str, *, active: bool) -> int:
   """Set a user's active status and print the email on success."""
   try:
-    count = iou.database.set_user_active(database, email, active=active)
+    count = owe.database.set_user_active(database, email, active=active)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -74,16 +74,16 @@ def set_active(database: Path, email: str, *, active: bool) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-  """Build the command-line parser for ``iou-users``."""
+  """Build the command-line parser for ``owe-users``."""
   parser = argparse.ArgumentParser(
-    prog="iou-users",
-    description="Manage users in the IOU bill splitter database.",
+    prog="owe-users",
+    description="Manage users in the Owe bill splitter database.",
   )
   parser.add_argument(
     "--database",
     type=Path,
-    default=Path("iou.db"),
-    help="path to the SQLite database file (default: iou.db)",
+    default=Path("owe.db"),
+    help="path to the SQLite database file (default: owe.db)",
   )
 
   sub = parser.add_subparsers(dest="command", metavar="COMMAND")
@@ -109,7 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-  """Run the ``iou-users`` command-line entry point."""
+  """Run the ``owe-users`` command-line entry point."""
   parser = build_parser()
   args = parser.parse_args()
 

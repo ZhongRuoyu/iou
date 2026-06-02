@@ -1,8 +1,8 @@
 [project]
-name = "iou"
+name = "owe"
 version = "0.1.0"
 authors = [{ name = "Ruoyu Zhong", email = "zhongruoyu@outlook.com" }]
-description = "I Owe You: Bill splitter and tracker."
+description = "Bill splitter and tracker."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -32,12 +32,12 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ZhongRuoyu/iou"
-Repository = "https://github.com/ZhongRuoyu/iou.git"
+Homepage = "https://github.com/ZhongRuoyu/owe"
+Repository = "https://github.com/ZhongRuoyu/owe.git"
 
 [project.scripts]
-iou-dump = "iou.scripts.iou_dump:main"
-iou-users = "iou.scripts.iou_users:main"
+owe-dump = "owe.scripts.owe_dump:main"
+owe-users = "owe.scripts.owe_users:main"
 
 [dependency-groups]
 dev = ["pytest>=9.0.3", "ruff>=0.15.14", "ty>=0.0.39"]
@@ -50,5 +50,5 @@ build-backend = "uv_build"
 exclude-newer = "P7D"
 
 [tool.uv.build-backend]
-module-name = "iou"
+module-name = "owe"
 module-root = ""

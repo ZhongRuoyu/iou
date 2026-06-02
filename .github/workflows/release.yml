@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/iou/${{ needs.build.outputs.version }}/
+      url: https://pypi.org/project/owe/${{ needs.build.outputs.version }}/
     permissions:
       id-token: write # for authenticating to PyPI
     steps:

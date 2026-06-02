@@ -49,7 +49,7 @@ def format_records(
     record_count = len(creator_records)
     records_word = "record" if record_count == 1 else "records"
     message = (
-      f"{record_count} new IOU {records_word} added by {creator_name}:\n"
+      f"{record_count} new Owe {records_word} added by {creator_name}:\n"
     )
     for record in creator_records:
       message += f"- {record_message(record, currency, users_by_email)}\n"
@@ -72,7 +72,7 @@ def format_record_status_change(
   record_count = len(records)
   records_word = "record" if record_count == 1 else "records"
   action = "activated" if active else "canceled"
-  message = f"{record_count} IOU {records_word} {action} by {requester_name}:\n"
+  message = f"{record_count} Owe {records_word} {action} by {requester_name}:\n"
   for record in records:
     message += f"- {record_message(record, currency, users_by_email)}\n"
   return message

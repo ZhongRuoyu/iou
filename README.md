@@ -1,11 +1,11 @@
-# IOU
+# Owe
 
-IOU ("I Owe You") is a simple web application for splitting bills and tracking
-who owes whom how much.
+Owe is a simple web application for splitting bills and tracking who owes whom
+how much.
 
 ## Overview
 
-IOU lets a group of users record debts and payments between each other.
+Owe lets a group of users record debts and payments between each other.
 The Summary tab shows the minimum set of transactions needed to settle all
 outstanding balances, and provides a one-click Settle button for each.
 
@@ -33,9 +33,9 @@ You can get started with uv:
 # Sync dependencies
 uv sync
 # Run the development server
-uv run flask --app iou run
+uv run flask --app owe run
 # Or run the production server with gunicorn
-uv run gunicorn "iou:create_app()"
+uv run gunicorn "owe:create_app()"
 ```
 
 Or if you prefer pip:
@@ -48,9 +48,9 @@ source .venv/bin/activate
 # Install dependencies
 pip install .
 # Run the development server
-flask --app iou run
+flask --app owe run
 # Or run the production server with gunicorn
-gunicorn "iou:create_app()"
+gunicorn "owe:create_app()"
 ```
 
 ### App factory customization
@@ -58,20 +58,20 @@ gunicorn "iou:create_app()"
 The application exposes an app factory, `create_app`, with two optional
 keyword arguments:
 
-- `url_prefix`: Prefix all registered routes (e.g. `"/iou"`).
+- `url_prefix`: Prefix all registered routes (e.g. `"/owe"`).
 - `api_only`: Register only the API blueprint (skip the bundled UI).
 
-For example, to run API-only routes under `/iou`:
+For example, to run API-only routes under `/owe`:
 
 ```sh
 # With Flask
-uv run flask --app "iou:create_app(api_only=True, url_prefix='/iou')" run
+uv run flask --app "owe:create_app(api_only=True, url_prefix='/owe')" run
 
 # With gunicorn
-uv run gunicorn "iou:create_app(api_only=True, url_prefix='/iou')"
+uv run gunicorn "owe:create_app(api_only=True, url_prefix='/owe')"
 ```
 
-With this configuration, API endpoints are served under `/iou/...`.
+With this configuration, API endpoints are served under `/owe/...`.
 
 ### Environment variables
 
@@ -81,7 +81,7 @@ The application can be configured with the following environment variables:
   `CRITICAL`).
   Default: `INFO`.
 - `DATABASE`: Path to the SQLite database file.
-  Default: `iou.db`.
+  Default: `owe.db`.
 - `CURRENCY`: ISO 4217 currency code displayed in the UI.
   Default: `USD`.
 - `REQUEST_EMAIL_HEADER`: HTTP header to trust for the authenticated user's
@@ -99,9 +99,9 @@ The application can be configured with the following environment variables:
 ## Docker
 
 Docker images are available on Docker Hub as
-[`zhongruoyu/iou`](https://hub.docker.com/r/zhongruoyu/iou),
+[`zhongruoyu/owe`](https://hub.docker.com/r/zhongruoyu/owe),
 and on GitHub Container Registry as
-[`ghcr.io/zhongruoyu/iou`](https://ghcr.io/zhongruoyu/iou).
+[`ghcr.io/zhongruoyu/owe`](https://ghcr.io/zhongruoyu/owe).
 The `main` tag tracks the latest commit on the main branch.
 
 You may run the application with Docker as follows:
@@ -109,9 +109,9 @@ You may run the application with Docker as follows:
 ```sh
 docker run -p 8000:8000 \
   -v /path/to/data:/data \
-  -e DATABASE=/data/iou.db \
+  -e DATABASE=/data/owe.db \
   -e CURRENCY=USD \
-  zhongruoyu/iou:main --bind "0.0.0.0:8000"
+  zhongruoyu/owe:main --bind "0.0.0.0:8000"
 ```
 
 The container image runs gunicorn and accepts its command-line arguments, so you
@@ -144,30 +144,30 @@ The server exposes the following API endpoints:
 
 The package also comes with two command-line utilities:
 
-- `iou-dump`: Dump all records in the database as CSV.
+- `owe-dump`: Dump all records in the database as CSV.
   Use `--output` to set the output file path (default: `records.csv`);
-  use `--database` to choose the SQLite database file (default: `iou.db`).
-- `iou-users`: Manage users from the command line.
-  Use `--database` to choose the SQLite database file (default: `iou.db`).
+  use `--database` to choose the SQLite database file (default: `owe.db`).
+- `owe-users`: Manage users from the command line.
+  Use `--database` to choose the SQLite database file (default: `owe.db`).
   Usage:
-  - `iou-users [--database <path>] create <email> <name>`:
+  - `owe-users [--database <path>] create <email> <name>`:
     Add a user with the given email and name.
-  - `iou-users [--database <path>] list`: List all users.
-  - `iou-users [--database <path>] activate <email>`:
+  - `owe-users [--database <path>] list`: List all users.
+  - `owe-users [--database <path>] activate <email>`:
     Activate the user with the given email.
-  - `iou-users [--database <path>] deactivate <email>`:
+  - `owe-users [--database <path>] deactivate <email>`:
     Deactivate the user with the given email.
 
 To run these utilities:
 
 ```sh
 # With uv
-uv run iou-dump --output records.csv
-uv run iou-users --database iou.db list
+uv run owe-dump --output records.csv
+uv run owe-users --database owe.db list
 
 # With pip, after `pip install .`
-iou-dump --output records.csv
-iou-users --database iou.db list
+owe-dump --output records.csv
+owe-users --database owe.db list
 ```
 
 ## License

@@ -20,10 +20,10 @@ defaults:
 
 env:
   DOCKERHUB_USERNAME: zhongruoyu
-  DOCKERHUB_REPOSITORY: zhongruoyu/iou
+  DOCKERHUB_REPOSITORY: zhongruoyu/owe
   GHCR_USERNAME: zhongruoyu
-  GHCR_REPOSITORY: ghcr.io/zhongruoyu/iou
-  BUILD_CACHE_REPOSITORY: ghcr.io/zhongruoyu/iou/cache
+  GHCR_REPOSITORY: ghcr.io/zhongruoyu/owe
+  BUILD_CACHE_REPOSITORY: ghcr.io/zhongruoyu/owe/cache
 
 jobs:
   metadata:

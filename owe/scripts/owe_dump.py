@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-import iou.database
-from iou.record import Record
+import owe.database
+from owe.record import Record
 
 
 def dump_records(records: list[Record], output: Path) -> None:
@@ -20,16 +20,16 @@ def dump_records(records: list[Record], output: Path) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-  """Build the command-line parser for ``iou-dump``."""
+  """Build the command-line parser for ``owe-dump``."""
   parser = argparse.ArgumentParser(
-    prog="iou-dump",
-    description="Dump records from the IOU database as CSV.",
+    prog="owe-dump",
+    description="Dump records from the Owe database as CSV.",
   )
   parser.add_argument(
     "--database",
     type=Path,
-    default=Path("iou.db"),
-    help="path to the SQLite database file (default: iou.db)",
+    default=Path("owe.db"),
+    help="path to the SQLite database file (default: owe.db)",
   )
   parser.add_argument(
     "--output",
@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-  """Run the ``iou-dump`` command-line entry point."""
+  """Run the ``owe-dump`` command-line entry point."""
   parser = build_parser()
   args = parser.parse_args()
 
@@ -52,7 +52,7 @@ def main() -> int:
     print(f"Error: Database file {database} not found")
     return 1
 
-  records = iou.database.get_records(database)
+  records = owe.database.get_records(database)
   dump_records(records, output)
   print(f"Successfully dumped {len(records)} records to {output}")
   return 0

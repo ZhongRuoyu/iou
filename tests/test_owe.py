@@ -5,9 +5,9 @@ from unittest.mock import Mock, patch
 
 from flask import Flask
 
-from iou import iou
-from iou.record import AggregatedRecord, Record
-from iou.user import User
+from owe import owe
+from owe.record import AggregatedRecord, Record
+from owe.user import User
 
 
 def make_record(record_id: int) -> Record:
@@ -24,14 +24,14 @@ def make_record(record_id: int) -> Record:
   )
 
 
-class IouTests(unittest.TestCase):
+class OweTests(unittest.TestCase):
   def setUp(self) -> None:
     """Create and push an app context with test config values."""
     self.app = Flask(__name__)
     self.app.config.update(
       {
         "LOG_LEVEL": "INFO",
-        "DATABASE": Path("test-iou.db"),
+        "DATABASE": Path("test-owe.db"),
         "CURRENCY": "USD",
         "REQUEST_EMAIL_HEADER": None,
         "TELEGRAM_BOT_TOKEN": None,
@@ -51,9 +51,9 @@ class IouTests(unittest.TestCase):
       User(email="user@example.com", name="User", active=True),
     ]
     with patch.object(
-      iou.database, "get_users", return_value=users
+      owe.database, "get_users", return_value=users
     ) as get_users:
-      result = iou.get_active_users()
+      result = owe.get_active_users()
 
     assert result == users
     get_users.assert_called_once_with(
@@ -65,11 +65,11 @@ class IouTests(unittest.TestCase):
     """Ensure record lookup delegates to DB and returns rows unchanged."""
     records = [make_record(1)]
     with patch.object(
-      iou.database,
+      owe.database,
       "get_records",
       return_value=records,
     ) as get_records:
-      result = iou.get_records()
+      result = owe.get_records()
 
     assert result == records
     get_records.assert_called_once_with(self.app.config["DATABASE"])
@@ -86,10 +86,10 @@ class IouTests(unittest.TestCase):
     )
 
     with (
-      patch.object(iou.database, "add_records") as add_records,
-      patch.object(iou.threading, "Thread") as thread,
+      patch.object(owe.database, "add_records") as add_records,
+      patch.object(owe.threading, "Thread") as thread,
     ):
-      iou.add_records(record)
+      owe.add_records(record)
 
     add_records.assert_called_once()
     assert add_records.call_args.args[0] == self.app.config["DATABASE"]
@@ -112,26 +112,26 @@ class IouTests(unittest.TestCase):
 
     thread_instance = Mock()
     with (
-      patch.object(iou.database, "add_records") as add_records,
+      patch.object(owe.database, "add_records") as add_records,
       patch.object(
-        iou,
+        owe,
         "get_active_users",
         return_value=users,
       ) as get_active_users,
       patch.object(
-        iou.threading,
+        owe.threading,
         "Thread",
         return_value=thread_instance,
       ) as thread,
     ):
       self.app.config["TELEGRAM_BOT_TOKEN"] = "token"  # noqa: S105
       self.app.config["TELEGRAM_CHAT_ID"] = "chat"
-      iou.add_records(aggregated)
+      owe.add_records(aggregated)
 
     add_records.assert_called_once_with(self.app.config["DATABASE"], records)
     get_active_users.assert_called_once_with()
     thread.assert_called_once_with(
-      target=iou.announce_records,
+      target=owe.announce_records,
       args=(
         records,
         self.app.config["CURRENCY"],
@@ -146,10 +146,10 @@ class IouTests(unittest.TestCase):
   def test_set_records_active_updates_db_without_telegram(self) -> None:
     """Ensure set_records_active updates DB without Telegram config."""
     with (
-      patch.object(iou.database, "set_records_active") as set_records_active,
-      patch.object(iou.threading, "Thread") as thread,
+      patch.object(owe.database, "set_records_active") as set_records_active,
+      patch.object(owe.threading, "Thread") as thread,
     ):
-      iou.set_records_active([3, 7], active=False, requester="req")
+      owe.set_records_active([3, 7], active=False, requester="req")
 
     set_records_active.assert_called_once_with(
       self.app.config["DATABASE"],
@@ -165,18 +165,18 @@ class IouTests(unittest.TestCase):
     thread_instance = Mock()
 
     with (
-      patch.object(iou.database, "set_records_active") as set_records_active,
-      patch.object(iou, "get_records", return_value=all_records),
-      patch.object(iou.database, "get_users", return_value=users),
+      patch.object(owe.database, "set_records_active") as set_records_active,
+      patch.object(owe, "get_records", return_value=all_records),
+      patch.object(owe.database, "get_users", return_value=users),
       patch.object(
-        iou.threading,
+        owe.threading,
         "Thread",
         return_value=thread_instance,
       ) as thread,
     ):
       self.app.config["TELEGRAM_BOT_TOKEN"] = "token"  # noqa: S105
       self.app.config["TELEGRAM_CHAT_ID"] = "chat"
-      iou.set_records_active([4, 1], active=True, requester="requester")
+      owe.set_records_active([4, 1], active=True, requester="requester")
 
     set_records_active.assert_called_once_with(
       self.app.config["DATABASE"],
@@ -185,7 +185,7 @@ class IouTests(unittest.TestCase):
     )
     selected_records = [all_records[0], all_records[2]]
     thread.assert_called_once_with(
-      target=iou.announce_record_status_change,
+      target=owe.announce_record_status_change,
       args=(
         selected_records,
         self.app.config["CURRENCY"],
@@ -209,11 +209,11 @@ class IouTests(unittest.TestCase):
       "eve@example.com": -20,
     }
     with patch.object(
-      iou.database,
+      owe.database,
       "get_net_balances",
       return_value=balances,
     ) as get_net_balances:
-      summary = iou.get_summary()
+      summary = owe.get_summary()
 
     assert summary == [
       {"from": "carol@example.com", "to": "alice@example.com", "amount": 50},
@@ -224,8 +224,8 @@ class IouTests(unittest.TestCase):
 
   def test_get_summary_returns_empty_for_balanced_book(self) -> None:
     """Ensure summary is empty when no balances are outstanding."""
-    with patch.object(iou.database, "get_net_balances", return_value={}):
-      summary = iou.get_summary()
+    with patch.object(owe.database, "get_net_balances", return_value={}):
+      summary = owe.get_summary()
 
     assert summary == []
 
