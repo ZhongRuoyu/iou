@@ -21,32 +21,31 @@ Core concepts:
 
 ## Requirements
 
-- Python 3.10 or later
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- (Optional) A Telegram bot token and chat ID for record notifications.
+Owe runs on Python 3.10 or later.
+It uses SQLite for data storage, so no additional database setup is required.
+For notifications, it can optionally integrate with Telegram via a bot token and
+chat ID.
+
+For development, [uv](https://github.com/astral-sh/uv) is recommended but
+pip can also be used.
 
 ## Setup
 
+Owe is available on PyPI as [`owe`](https://pypi.org/project/owe/).
 You can get started with uv:
 
 ```sh
-# Sync dependencies
-uv sync
 # Run the development server
-uv run flask --app owe run
+uvx --with owe flask --app owe run
 # Or run the production server with gunicorn
-uv run gunicorn "owe:create_app()"
+uvx --with owe gunicorn "owe:create_app()"
 ```
 
 Or if you prefer pip:
 
 ```sh
-# Create a virtual environment
-python3 -m venv .venv
-# Activate the virtual environment
-source .venv/bin/activate
-# Install dependencies
-pip install .
+# Install the package
+pip install owe
 # Run the development server
 flask --app owe run
 # Or run the production server with gunicorn
@@ -65,10 +64,10 @@ For example, to run API-only routes under `/owe`:
 
 ```sh
 # With Flask
-uv run flask --app "owe:create_app(api_only=True, url_prefix='/owe')" run
+uvx --with owe flask --app "owe:create_app(api_only=True, url_prefix='/owe')" run
 
 # With gunicorn
-uv run gunicorn "owe:create_app(api_only=True, url_prefix='/owe')"
+uvx --with owe gunicorn "owe:create_app(api_only=True, url_prefix='/owe')"
 ```
 
 With this configuration, API endpoints are served under `/owe/...`.
@@ -102,7 +101,8 @@ Docker images are available on Docker Hub as
 [`zhongruoyu/owe`](https://hub.docker.com/r/zhongruoyu/owe),
 and on GitHub Container Registry as
 [`ghcr.io/zhongruoyu/owe`](https://ghcr.io/zhongruoyu/owe).
-The `main` tag tracks the latest commit on the main branch.
+The `main` tag tracks the latest commit on the main branch,
+and the `latest` and named `v<version>` tags track the stable releases.
 
 You may run the application with Docker as follows:
 
@@ -162,10 +162,11 @@ To run these utilities:
 
 ```sh
 # With uv
-uv run owe-dump --output records.csv
-uv run owe-users --database owe.db list
+uvx --with owe owe-dump --output records.csv
+uvx --with owe owe-users --database owe.db list
 
-# With pip, after `pip install .`
+# With pip
+pip install owe
 owe-dump --output records.csv
 owe-users --database owe.db list
 ```
