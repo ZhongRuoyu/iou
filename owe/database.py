@@ -29,23 +29,29 @@ class Database:
   """An SQLite database for managing users and records."""
 
   uri: str
+  connect_timeout: float
+  busy_timeout_ms: int
 
-  def __init__(self, path: Path, *, create: bool) -> None:
+  def __init__(
+    self,
+    path: Path,
+    *,
+    create: bool,
+    connect_timeout: float = SQLITE_DEFAULT_CONNECT_TIMEOUT,
+    busy_timeout_ms: int = SQLITE_DEFAULT_BUSY_TIMEOUT_MS,
+  ) -> None:
     """Initialize the SQLite database with a database file path."""
     file = pathname2url(str(path))
     mode = "rwc" if create else "rw"
     self.uri = f"file:{file}?mode={mode}"
+    self.connect_timeout = connect_timeout
+    self.busy_timeout_ms = busy_timeout_ms
 
-  def _connect(
-    self,
-    *,
-    connect_timeout: float = SQLITE_DEFAULT_CONNECT_TIMEOUT,
-    busy_timeout_ms: int = SQLITE_DEFAULT_BUSY_TIMEOUT_MS,
-  ) -> sqlite3.Connection:
+  def _connect(self) -> sqlite3.Connection:
     """Create an SQLite connection configured for integrity and contention."""
-    conn = sqlite3.connect(self.uri, uri=True, timeout=connect_timeout)
+    conn = sqlite3.connect(self.uri, uri=True, timeout=self.connect_timeout)
     conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute(f"PRAGMA busy_timeout = {busy_timeout_ms};")
+    conn.execute(f"PRAGMA busy_timeout = {self.busy_timeout_ms};")
     conn.row_factory = dict_factory
     return conn
 
