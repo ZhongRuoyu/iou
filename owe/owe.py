@@ -1,4 +1,5 @@
 from logging import Logger
+from pathlib import Path
 from typing import TypedDict
 
 from .database import Database
@@ -22,17 +23,36 @@ class Owe:
 
   def __init__(
     self,
-    database: Database,
+    database_path: Path,
     *,
+    create_database: bool = False,
     logger: Logger | None = None,
   ) -> None:
     """Initialize the service with a database dependency."""
-    self._database = database
+    self._database = Database(database_path, create=create_database)
     self._logger = logger
+
+  def init(self) -> None:
+    """Initialize the Owe database."""
+    self._database.init()
 
   def get_users(self, *, active_only: bool = False) -> list[User]:
     """Return users, optionally filtered to active users."""
     return self._database.get_users(active_only=active_only)
+
+  def add_user(self, user: User) -> None:
+    """Add a user to the database."""
+    self._database.add_user(user)
+    if self._logger:
+      self._logger.info("User %s with name %s added", user.email, user.name)
+
+  def set_user_active(self, email: str, *, active: bool) -> int:
+    """Set a user's active status."""
+    result = self._database.set_user_active(email, active=active)
+    if self._logger:
+      status = "activated" if active else "deactivated"
+      self._logger.info("User %s %s", email, status)
+    return result
 
   def get_records(self, *, active_only: bool = False) -> list[Record]:
     """Return records, optionally filtered to active records."""

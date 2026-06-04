@@ -7,7 +7,6 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, Response, current_app, request
 
-from owe.database import Database
 from owe.owe import Owe, SummaryTransaction
 from owe.record import AggregatedRecord
 from owe.telegram_announcer import TelegramAnnouncer
@@ -56,9 +55,12 @@ def init(app: Flask) -> None:
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     level=getattr(logging, config["LOG_LEVEL"], logging.INFO),
   )
-  database = Database(config["DATABASE"], create=True)
-  database.init()
-  app.extensions[OWE_SERVICE_EXTENSION_KEY] = Owe(database)
+  owe_service = Owe(
+    config["DATABASE"],
+    create_database=True,
+  )
+  owe_service.init()
+  app.extensions[OWE_SERVICE_EXTENSION_KEY] = owe_service
 
   bot_token = config["TELEGRAM_BOT_TOKEN"]
   chat_id = config["TELEGRAM_CHAT_ID"]

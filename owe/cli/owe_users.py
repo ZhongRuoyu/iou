@@ -6,15 +6,15 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from owe.database import Database
+from owe.owe import Owe
 from owe.user import User
 
 
-def create_user(database: Database, email: str, name: str) -> int:
+def create_user(owe: Owe, email: str, name: str) -> int:
   """Create a user and print the created user's email on success."""
   user = User(email, name)
   try:
-    database.add_user(user)
+    owe.add_user(user)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -23,9 +23,9 @@ def create_user(database: Database, email: str, name: str) -> int:
   return 0
 
 
-def list_users(database: Database) -> int:
+def list_users(owe: Owe) -> int:
   """Print all users in a fixed-width table."""
-  users = database.get_users()
+  users = owe.get_users()
   if not users:
     print("No users found.")
     return 0
@@ -56,10 +56,10 @@ def list_users(database: Database) -> int:
   return 0
 
 
-def set_active(database: Database, email: str, *, active: bool) -> int:
+def set_active(owe: Owe, email: str, *, active: bool) -> int:
   """Set a user's active status and print the email on success."""
   try:
-    count = database.set_user_active(email, active=active)
+    count = owe.set_user_active(email, active=active)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -112,17 +112,17 @@ def main() -> int:
   parser = build_parser()
   args = parser.parse_args()
 
-  database = Database(args.database, create=False)
+  owe = Owe(args.database, create_database=False)
 
   match args.command:
     case "create":
-      return create_user(database, args.email, args.name)
+      return create_user(owe, args.email, args.name)
     case "list":
-      return list_users(database)
+      return list_users(owe)
     case "activate":
-      return set_active(database, args.email, active=True)
+      return set_active(owe, args.email, active=True)
     case "deactivate":
-      return set_active(database, args.email, active=False)
+      return set_active(owe, args.email, active=False)
     case _:
       parser.print_help()
       return 1

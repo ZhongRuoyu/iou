@@ -1,6 +1,7 @@
 import datetime as dt
 import unittest
-from unittest.mock import Mock
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 from owe.owe import Owe
 from owe.record import AggregatedRecord, Record
@@ -23,9 +24,12 @@ def make_record(record_id: int) -> Record:
 
 class OweTests(unittest.TestCase):
   def setUp(self) -> None:
-    """Create an Owe service with a mocked database dependency."""
+    """Create an Owe service with a mocked database backend."""
     self.database = Mock()
-    self.owe = Owe(self.database)
+    patcher = patch("owe.owe.Database", return_value=self.database)
+    self.addCleanup(patcher.stop)
+    patcher.start()
+    self.owe = Owe(Path("test-owe.db"))
 
   def test_get_users_returns_all_users_by_default(self) -> None:
     """Ensure user lookup delegates to the database without a filter."""
@@ -53,6 +57,31 @@ class OweTests(unittest.TestCase):
 
     assert result == users
     self.database.get_users.assert_called_once_with(active_only=True)
+
+  def test_add_user_inserts_user_into_database(self) -> None:
+    """Ensure add_user delegates user insertion to the database."""
+    user = User(email="new@example.com", name="New User")
+
+    self.owe.add_user(user)
+
+    self.database.add_user.assert_called_once_with(user)
+
+  def test_set_user_active_updates_database_and_returns_row_count(
+    self,
+  ) -> None:
+    """Ensure set_user_active forwards arguments and returns row count."""
+    self.database.set_user_active.return_value = 1
+
+    count = self.owe.set_user_active(
+      "user@example.com",
+      active=False,
+    )
+
+    assert count == 1
+    self.database.set_user_active.assert_called_once_with(
+      "user@example.com",
+      active=False,
+    )
 
   def test_get_records_returns_records_from_database(self) -> None:
     """
