@@ -129,7 +129,7 @@ class OweTests(unittest.TestCase):
 
   def test_set_records_active_updates_database(self) -> None:
     """Ensure set_records_active delegates status updates to the database."""
-    self.owe.set_records_active([3, 7], active=False, requester="req")
+    self.owe.set_records_active([3, 7], active=False)
 
     self.database.set_records_active.assert_called_once_with(
       [3, 7], active=False

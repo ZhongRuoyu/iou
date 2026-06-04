@@ -238,17 +238,13 @@ def set_records_active() -> tuple[dict[str, Any], int]:
   if not isinstance(active, bool):
     return {"success": False, "error": "active must be a boolean"}, 400
 
-  requester = get_requester()
   try:
-    owe_service.set_records_active(
-      ids,
-      active=active,
-      requester=requester,
-    )
+    owe_service.set_records_active(ids, active=active)
     announcer = app_telegram_announcer()
     if announcer:
       records = owe_service.get_records_by_ids(ids)
       users = owe_service.get_users()
+      requester = get_requester()
       threading.Thread(
         target=announcer.announce_record_status_change,
         args=(

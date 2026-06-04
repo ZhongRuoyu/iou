@@ -81,13 +81,12 @@ class Owe:
     ids: list[int],
     *,
     active: bool,
-    requester: str,
   ) -> None:
     """Activate or cancel records for the selected IDs."""
     self._database.set_records_active(ids, active=active)
     action = "activated" if active else "canceled"
     if self._logger:
-      self._logger.info("%d records %s by %s", len(ids), action, requester)
+      self._logger.info("%d records %s", len(ids), action)
 
   def get_summary(self) -> list[SummaryTransaction]:
     """Return a minimized transfer plan from current balances."""
