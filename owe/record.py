@@ -120,11 +120,6 @@ class Record:
     }
 
 
-def ceildiv(a: float, b: int) -> int:
-  """Divide ``a`` by ``b`` and round up."""
-  return int(-(a // -b))
-
-
 @dataclass(slots=True)
 class AggregatedRecord:
   """
@@ -141,7 +136,7 @@ class AggregatedRecord:
 
   def to_records(self) -> list[Record]:
     """Split an aggregated record into per-borrower ``Record`` entries."""
-    each_amount = ceildiv(self.amount, len(self.borrowers))
+    each_amount = self._ceildiv(self.amount, len(self.borrowers))
     created_at = dt.datetime.now(tz=dt.timezone.utc)
     return [
       Record(
@@ -156,3 +151,8 @@ class AggregatedRecord:
       for borrower in self.borrowers
       if borrower != self.lender
     ]
+
+  @staticmethod
+  def _ceildiv(a: float, b: int) -> int:
+    """Divide ``a`` by ``b`` and round up."""
+    return int(-(a // -b))

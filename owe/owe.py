@@ -17,8 +17,8 @@ class Owe:
   users, records, and summaries.
   """
 
-  database: Database
-  logger: Logger | None
+  _database: Database
+  _logger: Logger | None
 
   def __init__(
     self,
@@ -27,16 +27,16 @@ class Owe:
     logger: Logger | None = None,
   ) -> None:
     """Initialize the service with a database dependency."""
-    self.database = database
-    self.logger = logger
+    self._database = database
+    self._logger = logger
 
   def get_users(self, *, active_only: bool = False) -> list[User]:
     """Return users, optionally filtered to active users."""
-    return self.database.get_users(active_only=active_only)
+    return self._database.get_users(active_only=active_only)
 
   def get_records(self, *, active_only: bool = False) -> list[Record]:
     """Return records, optionally filtered to active records."""
-    return self.database.get_records(active_only=active_only)
+    return self._database.get_records(active_only=active_only)
 
   def get_records_by_ids(self, ids: list[int]) -> list[Record]:
     """Return records whose ID appears in ``ids``."""
@@ -46,9 +46,9 @@ class Owe:
   def add_records(self, record: AggregatedRecord) -> list[Record]:
     """Create and persist split records from one aggregated record."""
     records = record.to_records()
-    self.database.add_records(records)
-    if self.logger:
-      self.logger.info(
+    self._database.add_records(records)
+    if self._logger:
+      self._logger.info(
         "%d record(s) of type %s added by %s",
         len(records),
         record.type,
@@ -64,14 +64,14 @@ class Owe:
     requester: str,
   ) -> None:
     """Activate or cancel records for the selected IDs."""
-    self.database.set_records_active(ids, active=active)
+    self._database.set_records_active(ids, active=active)
     action = "activated" if active else "canceled"
-    if self.logger:
-      self.logger.info("%d records %s by %s", len(ids), action, requester)
+    if self._logger:
+      self._logger.info("%d records %s by %s", len(ids), action, requester)
 
   def get_summary(self) -> list[SummaryTransaction]:
     """Return a minimized transfer plan from current balances."""
-    net_balances = self.database.get_net_balances()
+    net_balances = self._database.get_net_balances()
     creditors = [
       (user, balance) for user, balance in net_balances.items() if balance > 0
     ]

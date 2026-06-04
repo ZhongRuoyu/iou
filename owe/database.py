@@ -11,26 +11,12 @@ SQLITE_DEFAULT_CONNECT_TIMEOUT = 5
 SQLITE_DEFAULT_BUSY_TIMEOUT_MS = 5000
 
 
-def dict_factory(
-  cursor: sqlite3.Cursor,
-  row: tuple[Any, ...],
-) -> dict[str, Any]:
-  """Convert an SQLite row tuple into a dict keyed by column name."""
-  return dict(
-    zip(
-      [column[0] for column in cursor.description],
-      row,
-      strict=True,
-    )
-  )
-
-
 class Database:
   """An SQLite database for managing users and records."""
 
-  uri: str
-  connect_timeout: float
-  busy_timeout_ms: int
+  _uri: str
+  _connect_timeout: float
+  _busy_timeout_ms: int
 
   def __init__(
     self,
@@ -43,17 +29,9 @@ class Database:
     """Initialize the SQLite database with a database file path."""
     file = pathname2url(str(path))
     mode = "rwc" if create else "rw"
-    self.uri = f"file:{file}?mode={mode}"
-    self.connect_timeout = connect_timeout
-    self.busy_timeout_ms = busy_timeout_ms
-
-  def _connect(self) -> sqlite3.Connection:
-    """Create an SQLite connection configured for integrity and contention."""
-    conn = sqlite3.connect(self.uri, uri=True, timeout=self.connect_timeout)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute(f"PRAGMA busy_timeout = {self.busy_timeout_ms};")
-    conn.row_factory = dict_factory
-    return conn
+    self._uri = f"file:{file}?mode={mode}"
+    self._connect_timeout = connect_timeout
+    self._busy_timeout_ms = busy_timeout_ms
 
   def init(self) -> None:
     """Create database tables and views if they do not already exist."""
@@ -191,3 +169,25 @@ class Database:
       cur = conn.cursor()
       rows = cur.execute("SELECT * FROM UserBalances;").fetchall()
     return {row["user"]: row["balance"] for row in rows}
+
+  def _connect(self) -> sqlite3.Connection:
+    """Create an SQLite connection configured for integrity and contention."""
+    conn = sqlite3.connect(self._uri, uri=True, timeout=self._connect_timeout)
+    conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute(f"PRAGMA busy_timeout = {self._busy_timeout_ms};")
+    conn.row_factory = self._dict_factory
+    return conn
+
+  @staticmethod
+  def _dict_factory(
+    cursor: sqlite3.Cursor,
+    row: tuple[Any, ...],
+  ) -> dict[str, Any]:
+    """Convert an SQLite row tuple into a dict keyed by column name."""
+    return dict(
+      zip(
+        [column[0] for column in cursor.description],
+        row,
+        strict=True,
+      )
+    )
