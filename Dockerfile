@@ -30,4 +30,5 @@ RUN
 FROM python:3.14.5-alpine
 
 COPY --from=builder /app/.venv /app/.venv
-ENTRYPOINT [ "/app/.venv/bin/gunicorn", "owe:create_app()" ]
+ENV PATH="/app/.venv/bin:$PATH"
+CMD [ "gunicorn", "owe.app:create_app()" ]

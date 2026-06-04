@@ -36,9 +36,9 @@ You can get started with uv:
 
 ```sh
 # Run the development server
-uvx --with owe flask --app owe run
+uvx --with owe flask --app owe.app run
 # Or run the production server with a WSGI server like Gunicorn
-uvx --with owe gunicorn "owe:create_app()"
+uvx --with owe gunicorn "owe.app:create_app()"
 ```
 
 Or if you prefer pip:
@@ -47,10 +47,10 @@ Or if you prefer pip:
 # Install the package
 pip install owe
 # Run the development server
-flask --app owe run
+flask --app owe.app run
 # Or run the production server with a WSGI server like Gunicorn
 pip install gunicorn
-gunicorn "owe:create_app()"
+gunicorn "owe.app:create_app()"
 ```
 
 ### App factory customization
@@ -65,10 +65,10 @@ For example, to run API-only routes under `/owe`:
 
 ```sh
 # With Flask
-uvx --with owe flask --app "owe:create_app(api_only=True, url_prefix='/owe')" run
+uvx --with owe flask --app "owe.app:create_app(api_only=True, url_prefix='/owe')" run
 
 # With Gunicorn
-uvx --with owe gunicorn "owe:create_app(api_only=True, url_prefix='/owe')"
+uvx --with owe gunicorn "owe.app:create_app(api_only=True, url_prefix='/owe')"
 ```
 
 With this configuration, API endpoints are served under `/owe/...`.
@@ -113,8 +113,7 @@ docker run -p 8000:8000 \
   -e OWE_DATABASE=/data/owe.db \
   -e OWE_CURRENCY=USD \
   zhongruoyu/owe:main \
-  --bind "0.0.0.0:8000" \
-  --workers 4
+  gunicorn "owe.app:create_app()" --bind "0.0.0.0:8000" --workers 4
 ```
 
 The container image runs the [Gunicorn](https://gunicorn.org/) WSGI server and

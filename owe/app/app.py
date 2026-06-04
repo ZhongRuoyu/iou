@@ -7,11 +7,12 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, Response, current_app, request
 
+from owe.database import Database
+from owe.owe import Owe, SummaryTransaction
+from owe.record import AggregatedRecord
+from owe.telegram_announcer import TelegramAnnouncer
+
 from .config import AppConfigItems
-from .database import Database
-from .owe import Owe, SummaryTransaction
-from .record import AggregatedRecord
-from .telegram_announcer import TelegramAnnouncer
 
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
