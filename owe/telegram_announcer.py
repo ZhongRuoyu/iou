@@ -5,6 +5,8 @@ import requests
 from .record import Record
 from .user import User
 
+TELEGRAM_DEFAULT_SEND_TIMEOUT = 15
+
 
 class TelegramAnnouncer:
   """Send Owe notifications to a Telegram chat."""
@@ -13,6 +15,7 @@ class TelegramAnnouncer:
   chat_id: str
   currency: str
   logger: Logger | None
+  send_timeout: int
 
   def __init__(
     self,
@@ -21,12 +24,14 @@ class TelegramAnnouncer:
     chat_id: str,
     currency: str,
     logger: Logger | None = None,
+    send_timeout: int = TELEGRAM_DEFAULT_SEND_TIMEOUT,
   ) -> None:
     """Initialize the announcer with required Telegram settings."""
     self.bot_token = bot_token
     self.chat_id = chat_id
     self.currency = currency
     self.logger = logger
+    self.send_timeout = send_timeout
 
   @staticmethod
   def try_get_user_name(email: str, users_by_email: dict[str, User]) -> str:
@@ -101,7 +106,7 @@ class TelegramAnnouncer:
       response = requests.post(
         f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
         json={"chat_id": self.chat_id, "text": message},
-        timeout=10,
+        timeout=self.send_timeout,
       )
       response.raise_for_status()
     except requests.RequestException:
