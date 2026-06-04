@@ -109,7 +109,7 @@ async function updateRecords() {
   const userMap = Object.fromEntries(
     users.map(user => [user.email, user.name]),
   );
-  Object.values(records).forEach(record => {
+  records.forEach(record => {
     record.lender = userMap[record.lender] ?? record.lender;
     record.borrower = userMap[record.borrower] ?? record.borrower;
   });
@@ -120,7 +120,7 @@ async function updateRecords() {
   }
 
   [...table.rows].forEach(row => row.remove());
-  Object.values(records)
+  records
     .sort((a, b) => b.created_at - a.created_at)
     .forEach(record => {
       const row = table.insertRow();
