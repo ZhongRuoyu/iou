@@ -5,15 +5,15 @@ import sqlite3
 import sys
 from pathlib import Path
 
-import owe.database
+from owe.database import Database
 from owe.user import User
 
 
-def create_user(database: Path, email: str, name: str) -> int:
+def create_user(database: Database, email: str, name: str) -> int:
   """Create a user and print the created user's email on success."""
   user = User(email, name)
   try:
-    owe.database.add_user(database, user)
+    database.add_user(user)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -22,9 +22,9 @@ def create_user(database: Path, email: str, name: str) -> int:
   return 0
 
 
-def list_users(database: Path) -> int:
+def list_users(database: Database) -> int:
   """Print all users in a fixed-width table."""
-  users = owe.database.get_users(database)
+  users = database.get_users()
   if not users:
     print("No users found.")
     return 0
@@ -55,10 +55,10 @@ def list_users(database: Path) -> int:
   return 0
 
 
-def set_active(database: Path, email: str, *, active: bool) -> int:
+def set_active(database: Database, email: str, *, active: bool) -> int:
   """Set a user's active status and print the email on success."""
   try:
-    count = owe.database.set_user_active(database, email, active=active)
+    count = database.set_user_active(email, active=active)
   except sqlite3.Error as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
@@ -111,10 +111,7 @@ def main() -> int:
   parser = build_parser()
   args = parser.parse_args()
 
-  database = args.database
-  if not database.exists():
-    print(f"Error: Database file {database} not found")
-    return 1
+  database = Database(args.database, create=False)
 
   match args.command:
     case "create":

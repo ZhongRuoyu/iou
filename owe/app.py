@@ -1,19 +1,28 @@
 import logging
 import sqlite3
+import threading
 from html import escape
 from pathlib import Path
 from typing import Any, cast
 
 from flask import Blueprint, Flask, Response, current_app, request
 
-from . import database, owe
 from .config import AppConfigItems
+from .database import Database
+from .owe import Owe, SummaryTransaction
 from .record import AggregatedRecord
+from .telegram_announcer import TelegramAnnouncer
 
 API_PREFIX = "/api"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+OWE_SERVICE_EXTENSION_KEY = "owe.service"
+TELEGRAM_ANNOUNCER_EXTENSION_KEY = "owe.telegram_announcer"
 
 logger = logging.getLogger(__name__)
+
+
+class AppServiceTypeError(TypeError):
+  """Raised when an app-level service has an unexpected type."""
 
 
 def app_config() -> AppConfigItems:
@@ -21,14 +30,45 @@ def app_config() -> AppConfigItems:
   return cast("AppConfigItems", current_app.config)
 
 
+def app_owe() -> Owe:
+  """Return the Owe service bound to the current Flask app instance."""
+  owe_service = current_app.extensions.get(OWE_SERVICE_EXTENSION_KEY)
+  if not isinstance(owe_service, Owe):
+    raise AppServiceTypeError
+  return owe_service
+
+
+def app_telegram_announcer() -> TelegramAnnouncer | None:
+  """Return app-level Telegram announcer, or ``None`` when disabled."""
+  announcer = current_app.extensions.get(TELEGRAM_ANNOUNCER_EXTENSION_KEY)
+  if announcer is None:
+    return None
+  if not isinstance(announcer, TelegramAnnouncer):
+    raise AppServiceTypeError
+  return announcer
+
+
 def init(app: Flask) -> None:
-  """Initialize logging and database schema for the app."""
+  """Initialize logging, schema, and app-level services."""
   config = cast("AppConfigItems", app.config)
   logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     level=getattr(logging, config["LOG_LEVEL"], logging.INFO),
   )
-  database.init(config["DATABASE"])
+  database = Database(config["DATABASE"], create=True)
+  database.init()
+  app.extensions[OWE_SERVICE_EXTENSION_KEY] = Owe(database)
+
+  bot_token = config["TELEGRAM_BOT_TOKEN"]
+  chat_id = config["TELEGRAM_CHAT_ID"]
+  if bot_token and chat_id:
+    app.extensions[TELEGRAM_ANNOUNCER_EXTENSION_KEY] = TelegramAnnouncer(
+      bot_token=bot_token,
+      chat_id=chat_id,
+      currency=config["CURRENCY"],
+    )
+  else:
+    app.extensions[TELEGRAM_ANNOUNCER_EXTENSION_KEY] = None
 
 
 def get_requester() -> str:
@@ -81,14 +121,14 @@ def get_config() -> dict[str, Any]:
 @api.route("/users")
 def get_users() -> list[dict[str, Any]]:
   """Return active users for UI selection."""
-  users = owe.get_active_users()
+  users = app_owe().get_active_users()
   return [user.asdict() for user in users]
 
 
 @api.route("/records")
 def get_records() -> dict[str, dict[str, Any]]:
   """Return all records keyed by record ID as strings."""
-  records = owe.get_records()
+  records = app_owe().get_records()
   return {str(record.id): record.asdict() for record in records}
 
 
@@ -141,11 +181,12 @@ def validate_add_records_request(  # noqa: PLR0911
 @api.route("/records", methods=["POST"])
 def add_records() -> tuple[dict[str, Any], int]:
   """Create an aggregated record and persist its split entries."""
+  owe_service = app_owe()
   req = request.get_json()
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
 
-  users = owe.get_active_users()
+  users = owe_service.get_active_users()
   valid_emails = {u.email for u in users}
   valid, error = validate_add_records_request(req, valid_emails)
   if not valid:
@@ -160,10 +201,18 @@ def add_records() -> tuple[dict[str, Any], int]:
     remarks=req["remarks"],
   )
   try:
-    owe.add_records(record)
+    records = owe_service.add_records(record)
   except sqlite3.Error:
     logger.exception("Database error in add_records")
     return {"success": False, "error": "Database error"}, 500
+
+  announcer = app_telegram_announcer()
+  if announcer:
+    threading.Thread(
+      target=announcer.announce_records,
+      args=(records, users),
+      daemon=False,
+    ).start()
 
   return {"success": True}, 200
 
@@ -171,6 +220,7 @@ def add_records() -> tuple[dict[str, Any], int]:
 @api.route("/records/status", methods=["PATCH"])
 def set_records_active() -> tuple[dict[str, Any], int]:
   """Update the active flag for a batch of records."""
+  owe_service = app_owe()
   req = request.get_json()
   if not req:
     return {"success": False, "error": "Request body must be JSON"}, 400
@@ -185,12 +235,27 @@ def set_records_active() -> tuple[dict[str, Any], int]:
   if not isinstance(active, bool):
     return {"success": False, "error": "active must be a boolean"}, 400
 
+  requester = get_requester()
   try:
-    owe.set_records_active(
+    owe_service.set_records_active(
       ids,
       active=active,
-      requester=get_requester(),
+      requester=requester,
     )
+    announcer = app_telegram_announcer()
+    if announcer:
+      records = owe_service.get_records_by_ids(ids)
+      users = owe_service.get_users()
+      threading.Thread(
+        target=announcer.announce_record_status_change,
+        args=(
+          records,
+          users,
+          requester,
+        ),
+        kwargs={"active": active},
+        daemon=False,
+      ).start()
   except sqlite3.Error:
     logger.exception("Database error in set_records_active")
     return {"success": False, "error": "Database error"}, 500
@@ -199,6 +264,6 @@ def set_records_active() -> tuple[dict[str, Any], int]:
 
 
 @api.route("/summary")
-def summary() -> list[owe.SummaryTransaction]:
+def summary() -> list[SummaryTransaction]:
   """Return settlement transactions computed from net balances."""
-  return owe.get_summary()
+  return app_owe().get_summary()

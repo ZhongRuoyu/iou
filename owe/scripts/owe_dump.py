@@ -5,7 +5,7 @@ import csv
 import sys
 from pathlib import Path
 
-import owe.database
+from owe.database import Database
 from owe.record import Record
 
 
@@ -44,14 +44,10 @@ def main() -> int:
   parser = build_parser()
   args = parser.parse_args()
 
-  database = args.database
+  database = Database(args.database, create=False)
   output = args.output
 
-  if not database.exists():
-    print(f"Error: Database file {database} not found")
-    return 1
-
-  records = owe.database.get_records(database)
+  records = database.get_records()
   dump_records(records, output)
   print(f"Successfully dumped {len(records)} records to {output}")
   return 0
