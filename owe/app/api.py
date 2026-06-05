@@ -7,9 +7,7 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, current_app, request
 
-from owe.database import SqliteDatabase
-from owe.owe import Owe
-from owe.record import AggregatedRecord, RecordType
+from owe import AggregatedRecord, Owe, RecordType, SqliteDatabase
 
 from .config import AppConfigItems
 from .schema import AddRecordsRequest, SetRecordsActiveRequest, parse

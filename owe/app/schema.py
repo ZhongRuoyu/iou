@@ -9,7 +9,7 @@ from pydantic import (
   ValidationError,
 )
 
-from owe.record import RecordType
+from owe import RecordType
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 

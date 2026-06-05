@@ -2,8 +2,7 @@ from logging import Logger
 
 import requests
 
-from owe.record import Record
-from owe.user import User
+from owe import Record, User
 
 TELEGRAM_DEFAULT_SEND_TIMEOUT = 15
 

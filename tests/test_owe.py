@@ -2,9 +2,14 @@ import datetime as dt
 import unittest
 from unittest.mock import Mock
 
-from owe.owe import Owe, SummaryTransaction
-from owe.record import AggregatedRecord, Record, RecordType
-from owe.user import User
+from owe import (
+  AggregatedRecord,
+  Owe,
+  Record,
+  RecordType,
+  SummaryTransaction,
+  User,
+)
 
 
 def make_record(record_id: int) -> Record:
