@@ -122,6 +122,11 @@ pip install gunicorn
 gunicorn "owe.app:create_app()"
 ```
 
+Note that the server does not handle authentication or authorization by itself,
+so it is strongly recommended to run it in a trusted environment (e.g. behind a
+reverse proxy with access control or in a trusted local network) to prevent
+unauthorized access.
+
 ### App factory customization
 
 The application exposes an app factory, `create_app`, with two optional
