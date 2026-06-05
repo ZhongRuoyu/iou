@@ -31,8 +31,7 @@ Homepage = "https://github.com/ZhongRuoyu/owe"
 Repository = "https://github.com/ZhongRuoyu/owe.git"
 
 [project.scripts]
-owe-dump = "owe.cli.owe_dump:main"
-owe-users = "owe.cli.owe_users:main"
+owe = "owe.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=9.0.3", "ruff>=0.15.14", "ty>=0.0.39"]

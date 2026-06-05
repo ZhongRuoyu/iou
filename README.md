@@ -23,8 +23,6 @@ Core concepts:
 
 Owe runs on Python 3.10 or later.
 It uses SQLite for data storage, so no additional database setup is required.
-For notifications, it can optionally integrate with Telegram via a bot token and
-chat ID.
 
 For development, [uv](https://github.com/astral-sh/uv) is recommended but
 pip can also be used.
@@ -32,7 +30,70 @@ pip can also be used.
 ## Setup
 
 Owe is available on PyPI as [`owe`](https://pypi.org/project/owe/).
-You can get started with uv:
+You can get started with uv or pip as follows:
+
+```sh
+# With uv
+uvx owe record list --format json
+
+# With pip
+pip install owe
+owe record list --format json
+```
+
+Docker images are available on Docker Hub as
+[`zhongruoyu/owe`](https://hub.docker.com/r/zhongruoyu/owe),
+and on GitHub Container Registry as
+[`ghcr.io/zhongruoyu/owe`](https://ghcr.io/zhongruoyu/owe).
+The `latest` and named `v<version>` tags track the stable releases,
+and the `main` tag tracks the latest commit on the main branch.
+You may run Owe with Docker as follows:
+
+```sh
+docker run -v "$PWD/owe.db":/owe.db zhongruoyu/owe owe record list
+```
+
+## Command-line interface
+
+Owe provides a command-line utility, `owe`, for managing users and records from
+the command line.
+Use it as follows:
+
+- `owe [--database <path>] user list [--active] [--format <format>]`:
+  List all users, or only active users if `--active` is specified.
+- `owe [--database <path>] user add <email> <name>`:
+  Add a user with the given email and name.
+- `owe [--database <path>] user <activate|deactivate> <email>`:
+  Activate or deactivate the user with the given email.
+- `owe [--database <path>] record list [--active] [--format <format>]`:
+  List all records, or only active records if `--active` is specified.
+- `owe [--database <path>] record add [options...] [--format <format>]`:
+  Add a record with the specified options and list the created records.
+  Options:
+  - `--type <DEBT|PAYMENT>`: Type of the record (required).
+  - `--lender <email>`: Email of the lender (required).
+  - `--borrower <email>`: Email of the borrower (required).
+    Pass multiple `--borrower` for multiple borrowers.
+  - `--amount <amount>`: Total amount (will be split evenly among borrowers)
+    (required).
+  - `--created-by <email>`: Email of the user creating the record (required).
+  - `--remarks <remarks>`: Optional remarks for the record.
+- `owe [--database <path>] record <activate|cancel> [--id <id> ...]`:
+  Update the status of records with the given IDs to active or inactive.
+- `owe [--database <path>] record summary [--format <format>]`:
+  Show the summary of settlements.
+
+The `--database` option allows you to choose the SQLite database file;
+if not specified, it defaults to `owe.db` in the current directory.
+`--format` can be set to `table` (default) for more human-readable output,
+or `json` or `csv` for more machine-friendly output.
+
+## Web server
+
+Owe also includes a server in the `owe.app` module, which serves the same
+functionality over a REST API, with an optional web user interface for managing
+records and users.
+To get started, you can run the server with uv or pip as follows:
 
 ```sh
 # Run the development server
@@ -73,6 +134,14 @@ uvx --with owe gunicorn "owe.app:create_app(api_only=True, url_prefix='/owe')"
 
 With this configuration, API endpoints are served under `/owe/...`.
 
+### Telegram notifications
+
+Owe also supports sending notifications on record creation and alteration to a
+Telegram chat.
+To enable this, a Telegram bot must be created and added to the target chat, and
+the bot token and chat ID must be set in the environment, as described in the
+next section.
+
 ### Environment variables
 
 The application can be configured with the following environment variables:
@@ -96,33 +165,7 @@ The application can be configured with the following environment variables:
 - `OWE_TELEGRAM_CHAT_ID`: Telegram chat ID for notifications.
   Default: unset.
 
-## Docker
-
-Docker images are available on Docker Hub as
-[`zhongruoyu/owe`](https://hub.docker.com/r/zhongruoyu/owe),
-and on GitHub Container Registry as
-[`ghcr.io/zhongruoyu/owe`](https://ghcr.io/zhongruoyu/owe).
-The `main` tag tracks the latest commit on the main branch,
-and the `latest` and named `v<version>` tags track the stable releases.
-
-You may run the application with Docker as follows:
-
-```sh
-docker run -p 8000:8000 \
-  -v /path/to/data:/data \
-  -e OWE_DATABASE=/data/owe.db \
-  -e OWE_CURRENCY=USD \
-  zhongruoyu/owe:main \
-  gunicorn "owe.app:create_app()" --bind "0.0.0.0:8000" --workers 4
-```
-
-The container image runs the [Gunicorn](https://gunicorn.org/) WSGI server and
-accepts its command-line arguments, so you can customize the server
-configuration (e.g. `--bind` for socket binding, `--workers` for the number of
-worker processes) using standard Gunicorn options.
-Run with `--help` for details.
-
-## API Endpoints
+### API Endpoints
 
 The server exposes the following API endpoints:
 
@@ -144,35 +187,22 @@ The server exposes the following API endpoints:
 - `GET /api/summary`:
   Get the minimum set of settlement transactions.
 
-## Utilities
+For API endpoints that create or modify records, the creator of the record is
+determined from the `OWE_REQUEST_EMAIL_HEADER` header if set, or from the remote
+IP address otherwise.
 
-The package also comes with two command-line utilities:
+### Running the web server with Docker
 
-- `owe-dump`: Dump all records in the database as CSV.
-  Use `--output` to set the output file path (default: `records.csv`);
-  use `--database` to choose the SQLite database file (default: `owe.db`).
-- `owe-users`: Manage users from the command line.
-  Use `--database` to choose the SQLite database file (default: `owe.db`).
-  Usage:
-  - `owe-users [--database <path>] create <email> <name>`:
-    Add a user with the given email and name.
-  - `owe-users [--database <path>] list`: List all users.
-  - `owe-users [--database <path>] activate <email>`:
-    Activate the user with the given email.
-  - `owe-users [--database <path>] deactivate <email>`:
-    Deactivate the user with the given email.
-
-To run these utilities:
+The Docker image includes the [Gunicorn](https://gunicorn.org/) WSGI server,
+which you can use to run the application in production:
 
 ```sh
-# With uv
-uvx --with owe owe-dump --output records.csv
-uvx --with owe owe-users --database owe.db list
-
-# With pip
-pip install owe
-owe-dump --output records.csv
-owe-users --database owe.db list
+docker run \
+  -p 8000:8000 \
+  -v "$PWD/owe.db":/owe.db \
+  -e OWE_CURRENCY=USD \
+  zhongruoyu/owe \
+  gunicorn "owe.app:create_app()" --bind "0.0.0.0:8000" --workers 4
 ```
 
 ## License

@@ -92,7 +92,7 @@ class Record:
     )
 
   def to_csv_row(self) -> tuple[int, str, str, str, str, str, str, str, int]:
-    """Return the record encoded as a CSV row."""
+    """Return values matching the ``csv_header`` CSV export order."""
     return (
       self.id or 0,
       self.type,

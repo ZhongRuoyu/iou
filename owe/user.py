@@ -29,6 +29,29 @@ class User:
       active=bool(row["active"]),
     )
 
+  @staticmethod
+  def csv_header() -> tuple[str, str, str]:
+    """Return the CSV header used for user export."""
+    return (
+      "email",
+      "name",
+      "active",
+    )
+
+  @staticmethod
+  def from_csv_row(row: list[str]) -> "User":
+    """Create a ``User`` from a CSV row."""
+    email, name, active = row
+    return User(email=email, name=name, active=bool(int(active)))
+
+  def to_csv_row(self) -> tuple[str, str, int]:
+    """Return values matching the ``csv_header`` CSV export order."""
+    return (
+      self.email,
+      self.name,
+      int(self.active),
+    )
+
   def to_dict(self) -> dict[str, Any]:
     """Return a JSON-serializable representation of the user."""
     return {
