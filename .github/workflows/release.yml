@@ -96,3 +96,42 @@ jobs:
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           attestations: true
+
+  bump-homebrew-formula:
+    name: Bump Homebrew formula
+    needs: [build, release]
+    runs-on: macos-latest
+    environment:
+      name: release
+      deployment: false
+    steps:
+      - name: Create bot token
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: homebrew-tap
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Configure Git user
+        run: |
+          BOT_LOGIN="${APP_SLUG}[bot]"
+          BOT_ID="$(gh api "/users/$BOT_LOGIN" --jq '.id')"
+          {
+            echo "HOMEBREW_GIT_NAME=$BOT_LOGIN"
+            echo "HOMEBREW_GIT_EMAIL=$BOT_ID+$BOT_LOGIN@users.noreply.github.com"
+          } >> "$GITHUB_ENV"
+        env:
+          APP_SLUG: ${{ steps.token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+      - name: Bump Homebrew formula
+        run: |
+          brew tap zhongruoyu/tap
+          brew bump-formula-pr --no-fork \
+            --version "$VERSION" \
+            zhongruoyu/tap/owe
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ steps.token.outputs.token }}
+          VERSION: ${{ needs.build.outputs.version }}
