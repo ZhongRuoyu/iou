@@ -110,21 +110,21 @@ def get_records() -> list[dict[str, Any]]:
 def _validate_add_records_request(
   req: AddRecordsRequest,
   valid_emails: set[str],
-) -> tuple[bool, str]:
+) -> str | None:
   """Validate add-record user references after model validation."""
   lender = req.lender
   borrowers = req.borrowers
 
   if lender not in valid_emails:
-    return False, f"Unknown lender: {escape(lender)}"
+    return f"Unknown lender: {escape(lender)}"
 
   if unknown_borrowers := set(borrowers) - valid_emails:
     borrowers_str = escape(
       ", ".join(email for email in unknown_borrowers),
     )
-    return False, f"Unknown borrower(s): {borrowers_str}"
+    return f"Unknown borrower(s): {borrowers_str}"
 
-  return True, ""
+  return None
 
 
 @api.route("/records", methods=["POST"])
@@ -144,8 +144,8 @@ def add_records() -> tuple[dict[str, Any], HTTPStatus]:
   owe_service = _app_owe()
   users = owe_service.get_users(active_only=True)
   valid_emails = {user.email for user in users}
-  valid, error = _validate_add_records_request(req, valid_emails)
-  if not valid:
+  error = _validate_add_records_request(req, valid_emails)
+  if error is not None:
     return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
 
   record = AggregatedRecord(
