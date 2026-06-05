@@ -11,6 +11,7 @@ from owe.record import AggregatedRecord, RecordType
 from owe.telegram_announcer import TelegramAnnouncer
 
 from .config import AppConfigItems
+from .schema import AddRecordsRequest, SetRecordsActiveRequest, parse
 
 OWE_SERVICE_EXTENSION_KEY = "owe.service"
 TELEGRAM_ANNOUNCER_EXTENSION_KEY = "owe.telegram_announcer"
@@ -104,46 +105,20 @@ def get_records() -> list[dict[str, Any]]:
   return [record.to_dict() for record in records]
 
 
-def _validate_add_records_request(  # noqa: PLR0911
-  req: dict[str, Any],
+def _validate_add_records_request(
+  req: AddRecordsRequest,
   valid_emails: set[str],
 ) -> tuple[bool, str]:
-  """Validate the add-record request body and referenced user emails."""
-  for key in ["type", "lender", "borrowers", "amount", "remarks"]:
-    if key not in req:
-      return False, f"Missing field: {key}"
-
-  req_type = req["type"]
-  if not isinstance(req_type, str) or req_type not in RecordType.__members__:
-    return False, f"type must be in {list(RecordType.__members__.keys())}"
-
-  lender = req["lender"]
-  if not isinstance(lender, str):
-    return False, "lender must be a string"
-
-  borrowers = req["borrowers"]
-  if (
-    not isinstance(borrowers, list)
-    or not borrowers
-    or not all(isinstance(borrower, str) for borrower in borrowers)
-  ):
-    return False, "borrowers must be a non-empty list of strings"
-
-  amount = req["amount"]
-  if not isinstance(amount, (int, float)) or amount <= 0:
-    return False, "amount must be a positive number"
-
-  remarks = req["remarks"]
-  if not isinstance(remarks, str) and remarks is not None:
-    return False, "remarks must be a string or null"
+  """Validate add-record user references after model validation."""
+  lender = req.lender
+  borrowers = req.borrowers
 
   if lender not in valid_emails:
     return False, f"Unknown lender: {escape(lender)}"
 
   if unknown_borrowers := set(borrowers) - valid_emails:
     borrowers_str = escape(
-      # https://github.com/astral-sh/ty/issues/521
-      ", ".join(email for email in unknown_borrowers),  # ty:ignore[no-matching-overload]
+      ", ".join(email for email in unknown_borrowers),
     )
     return False, f"Unknown borrower(s): {borrowers_str}"
 
@@ -153,24 +128,28 @@ def _validate_add_records_request(  # noqa: PLR0911
 @api.route("/records", methods=["POST"])
 def add_records() -> tuple[dict[str, Any], int]:
   """Create an aggregated record and persist its split entries."""
-  owe_service = _app_owe()
-  req = request.get_json()
-  if not req:
+  req_json = request.get_json(silent=True)
+  if req_json is None:
     return {"success": False, "error": "Request body must be JSON"}, 400
 
+  req, error = parse(req_json, AddRecordsRequest)
+  if req is None:
+    return {"success": False, "error": error}, 400
+
+  owe_service = _app_owe()
   users = owe_service.get_users(active_only=True)
-  valid_emails = {u.email for u in users}
+  valid_emails = {user.email for user in users}
   valid, error = _validate_add_records_request(req, valid_emails)
   if not valid:
     return {"success": False, "error": error}, 400
 
   record = AggregatedRecord(
-    type=req["type"],
-    lender=req["lender"],
-    borrowers=req["borrowers"],
-    amount=req["amount"],
+    type=RecordType(req.type),
+    lender=req.lender,
+    borrowers=req.borrowers,
+    amount=req.amount,
     created_by=_get_requester(),
-    remarks=req["remarks"],
+    remarks=req.remarks,
   )
   try:
     records = owe_service.add_records(record)
@@ -193,25 +172,22 @@ def add_records() -> tuple[dict[str, Any], int]:
 def set_records_active() -> tuple[dict[str, Any], int]:
   """Update the active flag for a batch of records."""
   owe_service = _app_owe()
-  req = request.get_json()
-  if not req:
+  req_json = request.get_json(silent=True)
+  if req_json is None:
     return {"success": False, "error": "Request body must be JSON"}, 400
 
-  ids = req.get("ids", [])
-  active = req.get("active")
-  if not ids or not all(isinstance(i, int) for i in ids):
-    return {
-      "success": False,
-      "error": "ids must be a non-empty list of integers",
-    }, 400
-  if not isinstance(active, bool):
-    return {"success": False, "error": "active must be a boolean"}, 400
+  req, error = parse(req_json, SetRecordsActiveRequest)
+  if req is None:
+    return {"success": False, "error": error}, 400
 
   try:
-    owe_service.set_records_active(ids, active=active)
+    owe_service.set_records_active(
+      req.ids,
+      active=req.active,
+    )
     announcer = _app_telegram_announcer()
     if announcer:
-      records = owe_service.get_records_by_ids(ids)
+      records = owe_service.get_records_by_ids(req.ids)
       users = owe_service.get_users()
       requester = _get_requester()
       threading.Thread(
@@ -221,7 +197,7 @@ def set_records_active() -> tuple[dict[str, Any], int]:
           users,
           requester,
         ),
-        kwargs={"active": active},
+        kwargs={"active": req.active},
         daemon=False,
       ).start()
   except sqlite3.Error:
