@@ -1,7 +1,6 @@
 import datetime as dt
 import unittest
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from owe.owe import Owe, SummaryTransaction
 from owe.record import AggregatedRecord, Record, RecordType
@@ -26,10 +25,7 @@ class OweTests(unittest.TestCase):
   def setUp(self) -> None:
     """Create an Owe service with a mocked database backend."""
     self.database = Mock()
-    patcher = patch("owe.owe.Database", return_value=self.database)
-    self.addCleanup(patcher.stop)
-    patcher.start()
-    self.owe = Owe(Path("test-owe.db"))
+    self.owe = Owe(self.database)
 
   def test_get_users_returns_all_users_by_default(self) -> None:
     """Ensure user lookup delegates to the database without a filter."""

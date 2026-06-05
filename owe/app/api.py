@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, current_app, request
 
+from owe.database import SqliteDatabase
 from owe.owe import Owe
 from owe.record import AggregatedRecord, RecordType
 from owe.telegram_announcer import TelegramAnnouncer
@@ -59,16 +60,15 @@ def _get_requester() -> str:
 def init(app: Flask) -> None:
   """Initialize logging, schema, and app-level services."""
   config = cast("AppConfigItems", app.config)
+
   logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     level=getattr(logging, config["LOG_LEVEL"], logging.INFO),
   )
-  owe_service = Owe(
-    config["DATABASE"],
-    create_database=True,
-    logger=logger,
-  )
-  owe_service.init()
+
+  database = SqliteDatabase(config["DATABASE"], create=True)
+  database.init()
+  owe_service = Owe(database, logger=logger)
   app.extensions[OWE_SERVICE_EXTENSION_KEY] = owe_service
 
   bot_token = config["TELEGRAM_BOT_TOKEN"]

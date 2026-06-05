@@ -1,4 +1,5 @@
 import sqlite3
+from abc import ABC, abstractmethod
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
@@ -11,8 +12,44 @@ SQLITE_DEFAULT_CONNECT_TIMEOUT = 5
 SQLITE_DEFAULT_BUSY_TIMEOUT_MS = 5000
 
 
-class Database:
-  """An SQLite database for managing users and records."""
+class Database(ABC):
+  """Abstract database backend for managing users and records."""
+
+  @abstractmethod
+  def init(self) -> None:
+    """Create database tables and views if they do not already exist."""
+
+  @abstractmethod
+  def get_users(self, *, active_only: bool = False) -> list[User]:
+    """Fetch users from the database ordered by display name."""
+
+  @abstractmethod
+  def add_user(self, user: User) -> None:
+    """Insert a user row into the database."""
+
+  @abstractmethod
+  def set_user_active(self, email: str, *, active: bool) -> int:
+    """Set a user's active flag and return the number of updated rows."""
+
+  @abstractmethod
+  def get_records(self, *, active_only: bool = False) -> list[Record]:
+    """Fetch records from the database ordered by ID."""
+
+  @abstractmethod
+  def add_records(self, records: list[Record]) -> None:
+    """Insert records and populate generated IDs on each record object."""
+
+  @abstractmethod
+  def set_records_active(self, ids: list[int], *, active: bool) -> int:
+    """Set the active flag for record IDs and return affected row count."""
+
+  @abstractmethod
+  def get_net_balances(self) -> dict[str, int]:
+    """Return per-user net balances computed from active records."""
+
+
+class SqliteDatabase(Database):
+  """An SQLite database backend for managing users and records."""
 
   _uri: str
   _connect_timeout: float

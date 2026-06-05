@@ -1,5 +1,4 @@
 from logging import Logger
-from pathlib import Path
 
 from .database import Database
 from .record import AggregatedRecord, Record
@@ -18,18 +17,13 @@ class Owe:
 
   def __init__(
     self,
-    database_path: Path,
+    database: Database,
     *,
-    create_database: bool = False,
     logger: Logger | None = None,
   ) -> None:
     """Initialize the service with a database dependency."""
-    self._database = Database(database_path, create=create_database)
+    self._database = database
     self._logger = logger
-
-  def init(self) -> None:
-    """Initialize the Owe database."""
-    self._database.init()
 
   def get_users(self, *, active_only: bool = False) -> list[User]:
     """Return users, optionally filtered to active users."""

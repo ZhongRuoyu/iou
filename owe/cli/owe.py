@@ -5,6 +5,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from owe.database import SqliteDatabase
 from owe.owe import Owe, SummaryTransaction
 from owe.record import AggregatedRecord, Record, RecordType
 from owe.user import User
@@ -480,8 +481,8 @@ def handle_database_command(args: argparse.Namespace) -> int:
   result = None
   match args.database_command:
     case "init":
-      owe = Owe(args.database, create_database=True)
-      owe.init()
+      database = SqliteDatabase(args.database, create=True)
+      database.init()
       result = 0
   if result is not None:
     return result
@@ -496,10 +497,12 @@ def main() -> int:
   result = None
   match args.command:
     case "user":
-      owe = Owe(args.database, create_database=False)
+      database = SqliteDatabase(args.database, create=False)
+      owe = Owe(database)
       result = handle_user_command(owe, args)
     case "record":
-      owe = Owe(args.database, create_database=False)
+      database = SqliteDatabase(args.database, create=False)
+      owe = Owe(database)
       result = handle_record_command(owe, args)
     case "database":
       result = handle_database_command(args)
