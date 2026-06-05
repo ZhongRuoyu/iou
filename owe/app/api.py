@@ -2,6 +2,7 @@ import logging
 import sqlite3
 import threading
 from html import escape
+from http import HTTPStatus
 from typing import Any, cast
 
 from flask import Blueprint, Flask, current_app, request
@@ -127,22 +128,25 @@ def _validate_add_records_request(
 
 
 @api.route("/records", methods=["POST"])
-def add_records() -> tuple[dict[str, Any], int]:
+def add_records() -> tuple[dict[str, Any], HTTPStatus]:
   """Create an aggregated record and persist its split entries."""
   req_json = request.get_json(silent=True)
   if req_json is None:
-    return {"success": False, "error": "Request body must be JSON"}, 400
+    return {
+      "success": False,
+      "error": "Request body must be JSON",
+    }, HTTPStatus.BAD_REQUEST
 
   req, error = parse(req_json, AddRecordsRequest)
   if req is None:
-    return {"success": False, "error": error}, 400
+    return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
 
   owe_service = _app_owe()
   users = owe_service.get_users(active_only=True)
   valid_emails = {user.email for user in users}
   valid, error = _validate_add_records_request(req, valid_emails)
   if not valid:
-    return {"success": False, "error": error}, 400
+    return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
 
   record = AggregatedRecord(
     type=RecordType(req.type),
@@ -156,7 +160,10 @@ def add_records() -> tuple[dict[str, Any], int]:
     records = owe_service.add_records(record)
   except sqlite3.Error:
     logger.exception("Database error in add_records")
-    return {"success": False, "error": "Database error"}, 500
+    return {
+      "success": False,
+      "error": "Database error",
+    }, HTTPStatus.INTERNAL_SERVER_ERROR
 
   announcer = _app_telegram_announcer()
   if announcer:
@@ -166,20 +173,23 @@ def add_records() -> tuple[dict[str, Any], int]:
       daemon=False,
     ).start()
 
-  return {"success": True}, 200
+  return {"success": True}, HTTPStatus.OK
 
 
 @api.route("/records/status", methods=["PATCH"])
-def set_records_active() -> tuple[dict[str, Any], int]:
+def set_records_active() -> tuple[dict[str, Any], HTTPStatus]:
   """Update the active flag for a batch of records."""
   owe_service = _app_owe()
   req_json = request.get_json(silent=True)
   if req_json is None:
-    return {"success": False, "error": "Request body must be JSON"}, 400
+    return {
+      "success": False,
+      "error": "Request body must be JSON",
+    }, HTTPStatus.BAD_REQUEST
 
   req, error = parse(req_json, SetRecordsActiveRequest)
   if req is None:
-    return {"success": False, "error": error}, 400
+    return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
 
   try:
     owe_service.set_records_active(
@@ -203,9 +213,12 @@ def set_records_active() -> tuple[dict[str, Any], int]:
       ).start()
   except sqlite3.Error:
     logger.exception("Database error in set_records_active")
-    return {"success": False, "error": "Database error"}, 500
+    return {
+      "success": False,
+      "error": "Database error",
+    }, HTTPStatus.INTERNAL_SERVER_ERROR
 
-  return {"success": True}, 200
+  return {"success": True}, HTTPStatus.OK
 
 
 @api.route("/summary")
