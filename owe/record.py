@@ -1,13 +1,19 @@
 import datetime as dt
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
+
+
+class RecordType(str, Enum):
+  DEBT = "DEBT"
+  PAYMENT = "PAYMENT"
 
 
 @dataclass(slots=True)
 class Record:
   """A record representing a single transaction between two users."""
 
-  type: str
+  type: RecordType
   lender: str
   borrower: str
   amount: int
@@ -40,7 +46,7 @@ class Record:
     )
     return Record(
       id=row["id"],
-      type=row["type"],
+      type=RecordType(row["type"]),
       lender=row["lender"],
       borrower=row["borrower"],
       amount=row["amount"],
@@ -81,7 +87,7 @@ class Record:
     ) = row
     return Record(
       id=int(record_id),
-      type=record_type,
+      type=RecordType(record_type),
       lender=lender,
       borrower=borrower,
       amount=int(float(amount) * 100),
@@ -127,7 +133,7 @@ class AggregatedRecord:
   multiple users.
   """
 
-  type: str
+  type: RecordType
   lender: str
   borrowers: list[str]
   amount: int

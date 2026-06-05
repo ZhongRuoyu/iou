@@ -4,7 +4,7 @@ from textwrap import dedent
 from typing import Any
 from urllib.request import pathname2url
 
-from .record import Record
+from .record import Record, RecordType
 from .user import User
 
 SQLITE_DEFAULT_CONNECT_TIMEOUT = 5
@@ -45,7 +45,7 @@ class Database:
           );
         """)
       ).execute(
-        dedent("""
+        dedent(f"""
           CREATE TABLE IF NOT EXISTS Records(
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             type       TEXT NOT NULL,
@@ -56,7 +56,7 @@ class Database:
             created_at INTEGER NOT NULL,
             remarks    TEXT,
             active     BOOLEAN DEFAULT TRUE,
-            CHECK(type IN ('DEBT', 'PAYMENT')),
+            CHECK(type IN ({", ".join(f"'{t.value}'" for t in RecordType)})),
             FOREIGN KEY(lender) REFERENCES Users(email),
             FOREIGN KEY(borrower) REFERENCES Users(email),
             CHECK(lender != borrower),

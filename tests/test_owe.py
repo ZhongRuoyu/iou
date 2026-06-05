@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from owe.owe import Owe, SummaryTransaction
-from owe.record import AggregatedRecord, Record
+from owe.record import AggregatedRecord, Record, RecordType
 from owe.user import User
 
 
@@ -12,7 +12,7 @@ def make_record(record_id: int) -> Record:
   """Create a deterministic sample record for tests."""
   return Record(
     id=record_id,
-    type="DEBT",
+    type=RecordType.DEBT,
     lender="lender@example.com",
     borrower=f"borrower-{record_id}@example.com",
     amount=100,
@@ -110,7 +110,7 @@ class OweTests(unittest.TestCase):
   def test_add_records_inserts_records(self) -> None:
     """Ensure add_records inserts split records and returns them."""
     record = AggregatedRecord(
-      type="DEBT",
+      type=RecordType.DEBT,
       lender="lender@example.com",
       borrowers=["borrower-1@example.com", "borrower-2@example.com"],
       amount=101,

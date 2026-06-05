@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from owe.owe import Owe, SummaryTransaction
-from owe.record import AggregatedRecord, Record
+from owe.record import AggregatedRecord, Record, RecordType
 from owe.user import User
 
 
@@ -184,7 +184,7 @@ def add_records(  # noqa: PLR0913
 ) -> int:
   """Add a new aggregated record, and print the created records on success."""
   aggregated_record = AggregatedRecord(
-    type=record_type,
+    type=RecordType(record_type),
     lender=lender,
     borrowers=borrowers,
     amount=int(amount * 100),

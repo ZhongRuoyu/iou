@@ -7,7 +7,7 @@ from typing import Any, cast
 from flask import Blueprint, Flask, current_app, request
 
 from owe.owe import Owe
-from owe.record import AggregatedRecord
+from owe.record import AggregatedRecord, RecordType
 from owe.telegram_announcer import TelegramAnnouncer
 
 from .config import AppConfigItems
@@ -114,8 +114,8 @@ def _validate_add_records_request(  # noqa: PLR0911
       return False, f"Missing field: {key}"
 
   req_type = req["type"]
-  if not isinstance(req_type, str) or req_type not in {"DEBT", "PAYMENT"}:
-    return False, 'type must be either "DEBT" or "PAYMENT"'
+  if not isinstance(req_type, str) or req_type not in RecordType.__members__:
+    return False, f"type must be in {list(RecordType.__members__.keys())}"
 
   lender = req["lender"]
   if not isinstance(lender, str):
