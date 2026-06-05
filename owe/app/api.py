@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, current_app, request
 
-from owe.owe import Owe, SummaryTransaction
+from owe.owe import Owe
 from owe.record import AggregatedRecord
 from owe.telegram_announcer import TelegramAnnouncer
 
@@ -232,6 +232,7 @@ def set_records_active() -> tuple[dict[str, Any], int]:
 
 
 @api.route("/summary")
-def summary() -> list[SummaryTransaction]:
+def summary() -> list[dict[str, Any]]:
   """Return settlement transactions computed from net balances."""
-  return _app_owe().get_summary()
+  summary = _app_owe().get_summary()
+  return [transaction.to_dict() for transaction in summary]

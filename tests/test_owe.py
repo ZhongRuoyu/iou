@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from owe.owe import Owe
+from owe.owe import Owe, SummaryTransaction
 from owe.record import AggregatedRecord, Record
 from owe.user import User
 
@@ -149,9 +149,21 @@ class OweTests(unittest.TestCase):
     summary = self.owe.get_summary()
 
     assert summary == [
-      {"from": "carol@example.com", "to": "alice@example.com", "amount": 50},
-      {"from": "dave@example.com", "to": "alice@example.com", "amount": 30},
-      {"from": "eve@example.com", "to": "bob@example.com", "amount": 20},
+      SummaryTransaction(
+        from_user="carol@example.com",
+        to_user="alice@example.com",
+        amount=50,
+      ),
+      SummaryTransaction(
+        from_user="dave@example.com",
+        to_user="alice@example.com",
+        amount=30,
+      ),
+      SummaryTransaction(
+        from_user="eve@example.com",
+        to_user="bob@example.com",
+        amount=20,
+      ),
     ]
     self.database.get_net_balances.assert_called_once_with()
 

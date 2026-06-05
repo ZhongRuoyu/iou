@@ -1,15 +1,26 @@
+from dataclasses import dataclass
 from logging import Logger
 from pathlib import Path
-from typing import TypedDict
+from typing import Any
 
 from .database import Database
 from .record import AggregatedRecord, Record
 from .user import User
 
-SummaryTransaction = TypedDict(
-  "SummaryTransaction",
-  {"from": str, "to": str, "amount": int},
-)
+
+@dataclass(slots=True)
+class SummaryTransaction:
+  from_user: str
+  to_user: str
+  amount: int
+
+  def to_dict(self) -> dict[str, Any]:
+    """Return a JSON-serializable representation of the summary transaction."""
+    return {
+      "from": self.from_user,
+      "to": self.to_user,
+      "amount": self.amount,
+    }
 
 
 class Owe:
@@ -110,7 +121,11 @@ class Owe:
       transfer_amount = min(credit_amount, debt_amount)
       if transfer_amount > 0:
         transactions.append(
-          {"from": debtor_user, "to": creditor_user, "amount": transfer_amount}
+          SummaryTransaction(
+            from_user=debtor_user,
+            to_user=creditor_user,
+            amount=transfer_amount,
+          )
         )
       new_credit_amount = credit_amount - transfer_amount
       new_debt_amount = debt_amount - transfer_amount
