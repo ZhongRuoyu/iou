@@ -29,16 +29,19 @@ pip can also be used.
 
 ## Setup
 
-Owe is available on PyPI as [`owe`](https://pypi.org/project/owe/).
-You can get started with uv or pip as follows:
+Owe is available on PyPI as [`owe`](https://pypi.org/project/owe/), and as a
+Homebrew formula `zhongruoyu/tap/owe`.
+You can get started as follows:
 
 ```sh
 # With uv
-uvx owe record list --format json
+uv tool install owe
 
 # With pip
 pip install owe
-owe record list --format json
+
+# With Homebrew
+brew install zhongruoyu/tap/owe
 ```
 
 Docker images are available on Docker Hub as
@@ -52,6 +55,11 @@ You may run Owe with Docker as follows:
 ```sh
 docker run -v "$PWD/owe.db":/owe.db zhongruoyu/owe owe record list
 ```
+
+This Docker command runs the `owe record list` command to list all records in
+the default database file `owe.db`.
+Read on for more details on using the command-line interface and running the web
+server.
 
 ## Command-line interface
 
