@@ -403,6 +403,22 @@ def build_parser() -> argparse.ArgumentParser:
     default="table",
   )
 
+  database_parser = command.add_parser(
+    "database",
+    help="manage the database",
+    description="Manage the Owe database.",
+  )
+  database_command = database_parser.add_subparsers(
+    dest="database_command",
+    metavar="DATABASE_COMMAND",
+    required=True,
+  )
+
+  database_init_parser = database_command.add_parser(  # noqa: F841
+    "init",
+    help="initialize the database, creating tables if they do not exist",
+  )
+
   return parser
 
 
@@ -459,19 +475,34 @@ def handle_record_command(owe: Owe, args: argparse.Namespace) -> int:
   return 1
 
 
+def handle_database_command(args: argparse.Namespace) -> int:
+  """Handle the "database" subcommand and its subcommands."""
+  result = None
+  match args.database_command:
+    case "init":
+      owe = Owe(args.database, create_database=True)
+      owe.init()
+      result = 0
+  if result is not None:
+    return result
+  return 1
+
+
 def main() -> int:
   """Run the ``owe`` command-line entry point."""
   parser = build_parser()
   args = parser.parse_args()
 
-  owe = Owe(args.database, create_database=False)
-
   result = None
   match args.command:
     case "user":
+      owe = Owe(args.database, create_database=False)
       result = handle_user_command(owe, args)
     case "record":
+      owe = Owe(args.database, create_database=False)
       result = handle_record_command(owe, args)
+    case "database":
+      result = handle_database_command(args)
   if result is not None:
     return result
   return 1
