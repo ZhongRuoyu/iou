@@ -1,5 +1,6 @@
 import sqlite3
 from abc import ABC, abstractmethod
+from contextlib import closing
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
@@ -72,7 +73,7 @@ class SqliteDatabase(Database):
 
   def init(self) -> None:
     """Create database tables and views if they do not already exist."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       conn.cursor().execute(
         dedent("""
           CREATE TABLE IF NOT EXISTS Users(
@@ -128,7 +129,7 @@ class SqliteDatabase(Database):
 
   def get_users(self, *, active_only: bool = False) -> list[User]:
     """Fetch users from the database ordered by display name."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       query = "SELECT * FROM Users"
       if active_only:
@@ -139,7 +140,7 @@ class SqliteDatabase(Database):
 
   def add_user(self, user: User) -> None:
     """Insert a user row into the database."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       cur.execute(
         "INSERT INTO Users(email, name, active) VALUES(?, ?, ?);",
@@ -148,7 +149,7 @@ class SqliteDatabase(Database):
 
   def set_user_active(self, email: str, *, active: bool) -> int:
     """Set a user's active flag and return the number of updated rows."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       cur.execute(
         "UPDATE Users SET active = ? WHERE email = ?;",
@@ -158,7 +159,7 @@ class SqliteDatabase(Database):
 
   def get_records(self, *, active_only: bool = False) -> list[Record]:
     """Fetch records from the database ordered by ID."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       query = "SELECT * FROM Records"
       if active_only:
@@ -169,7 +170,7 @@ class SqliteDatabase(Database):
 
   def add_records(self, records: list[Record]) -> None:
     """Insert records and populate generated IDs on each record object."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       for record in records:
         cur.execute(
@@ -192,7 +193,7 @@ class SqliteDatabase(Database):
 
   def set_records_active(self, ids: list[int], *, active: bool) -> int:
     """Set the active flag for record IDs and return affected row count."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       cur.executemany(
         "UPDATE Records SET active = ? WHERE id = ?;",
@@ -202,7 +203,7 @@ class SqliteDatabase(Database):
 
   def get_net_balances(self) -> dict[str, int]:
     """Return per-user net balances computed from active records."""
-    with self._connect() as conn:
+    with closing(self._connect()) as conn, conn:
       cur = conn.cursor()
       rows = cur.execute("SELECT * FROM UserBalances;").fetchall()
     return {row["user"]: row["balance"] for row in rows}
