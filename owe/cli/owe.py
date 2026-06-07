@@ -1,14 +1,19 @@
 import argparse
 import csv
 import json
-import sqlite3
 import sys
 from pathlib import Path
 
-from owe.database import SqliteDatabase
-from owe.owe import Owe, SummaryTransaction
-from owe.record import AggregatedRecord, Record, RecordType
-from owe.user import User
+from owe import (
+  AggregatedRecord,
+  DatabaseError,
+  Owe,
+  Record,
+  RecordType,
+  SqliteDatabase,
+  SummaryTransaction,
+  User,
+)
 
 
 def print_table(header: list[str], rows: list[list[str]]) -> None:
@@ -123,10 +128,11 @@ def print_summary(
 
 def list_users(owe: Owe, *, active_only: bool, output_format: str) -> int:
   """Print all users in a fixed-width table."""
-  users = owe.get_users(active_only=active_only)
-  if not users:
-    print("No users found.")
-    return 0
+  try:
+    users = owe.get_users(active_only=active_only)
+  except DatabaseError as error:
+    print(f"Error: {error}", file=sys.stderr)
+    return 1
 
   print_users(users, output_format=output_format)
   return 0
@@ -137,7 +143,7 @@ def add_user(owe: Owe, email: str, name: str) -> int:
   user = User(email, name)
   try:
     owe.add_user(user)
-  except sqlite3.Error as error:
+  except DatabaseError as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
 
@@ -148,13 +154,9 @@ def add_user(owe: Owe, email: str, name: str) -> int:
 def set_user_active(owe: Owe, email: str, *, active: bool) -> int:
   """Set a user's active status and print the email on success."""
   try:
-    count = owe.set_user_active(email, active=active)
-  except sqlite3.Error as error:
+    owe.set_user_active(email, active=active)
+  except DatabaseError as error:
     print(f"Error: {error}", file=sys.stderr)
-    return 1
-
-  if count == 0:
-    print("Error: User not found", file=sys.stderr)
     return 1
 
   print(email)
@@ -163,10 +165,11 @@ def set_user_active(owe: Owe, email: str, *, active: bool) -> int:
 
 def list_records(owe: Owe, *, active_only: bool, output_format: str) -> int:
   """Print all records in a fixed-width table."""
-  records = owe.get_records(active_only=active_only)
-  if not records:
-    print("No records found.")
-    return 0
+  try:
+    records = owe.get_records(active_only=active_only)
+  except DatabaseError as error:
+    print(f"Error: {error}", file=sys.stderr)
+    return 1
 
   print_records(records, output_format=output_format)
   return 0
@@ -194,7 +197,7 @@ def add_records(  # noqa: PLR0913
   )
   try:
     records = owe.add_records(aggregated_record)
-  except sqlite3.Error as error:
+  except DatabaseError as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
 
@@ -206,7 +209,7 @@ def set_record_active(owe: Owe, ids: list[int], *, active: bool) -> int:
   """Activate or cancel records by IDs, and print the IDs on success."""
   try:
     owe.set_records_active(ids, active=active)
-  except sqlite3.Error as error:
+  except DatabaseError as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
 
@@ -217,10 +220,11 @@ def set_record_active(owe: Owe, ids: list[int], *, active: bool) -> int:
 
 def show_summary(owe: Owe, *, output_format: str) -> int:
   """Print the summary of transactions in a fixed-width table or JSON format."""
-  summary = owe.get_summary()
-  if not summary:
-    print("No transactions found.")
-    return 0
+  try:
+    summary = owe.get_summary()
+  except DatabaseError as error:
+    print(f"Error: {error}", file=sys.stderr)
+    return 1
 
   print_summary(summary, output_format=output_format)
   return 0

@@ -42,16 +42,19 @@ async function getUsers() {
   if (cachedUsers) {
     return cachedUsers;
   }
-  cachedUsers = await fetch(`${api}/users`).then(res => res.json());
+  const response = await fetch(`${api}/users`).then(res => res.json());
+  cachedUsers = response["users"];
   return cachedUsers;
 }
 
 async function getRecords() {
-  return await fetch(`${api}/records`).then(res => res.json());
+  const response = await fetch(`${api}/records`).then(res => res.json());
+  return response["records"];
 }
 
 async function getSummary() {
-  return await fetch(`${api}/summary`).then(res => res.json());
+  const response = await fetch(`${api}/summary`).then(res => res.json());
+  return response["summary"];
 }
 
 async function updateUsers() {

@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 import threading
 from html import escape
 from http import HTTPStatus
@@ -7,7 +6,7 @@ from typing import Any, cast
 
 from flask import Blueprint, Flask, current_app, request
 
-from owe import AggregatedRecord, Owe, RecordType, SqliteDatabase
+from owe import AggregatedRecord, DatabaseError, Owe, RecordType, SqliteDatabase
 
 from .config import AppConfigItems
 from .schema import AddRecordsRequest, SetRecordsActiveRequest, parse
@@ -93,23 +92,43 @@ api = Blueprint("api", __name__)
 
 
 @api.route("/config")
-def get_config() -> dict[str, Any]:
+def get_config() -> tuple[dict[str, Any], HTTPStatus]:
   """Return client-facing configuration values."""
-  return {"currency": _app_config()["CURRENCY"]}
+  return {"currency": _app_config()["CURRENCY"]}, HTTPStatus.OK
 
 
 @api.route("/users")
-def get_users() -> list[dict[str, Any]]:
+def get_users() -> tuple[dict[str, Any], HTTPStatus]:
   """Return active users."""
-  users = _app_owe().get_users(active_only=True)
-  return [user.to_dict() for user in users]
+  try:
+    users = _app_owe().get_users(active_only=True)
+  except DatabaseError:
+    logger.exception("Database error in get_users")
+    return {
+      "success": False,
+      "error": "Database error",
+    }, HTTPStatus.INTERNAL_SERVER_ERROR
+  return {
+    "success": True,
+    "users": [user.to_dict() for user in users],
+  }, HTTPStatus.OK
 
 
 @api.route("/records")
-def get_records() -> list[dict[str, Any]]:
+def get_records() -> tuple[dict[str, Any], HTTPStatus]:
   """Return all records."""
-  records = _app_owe().get_records()
-  return [record.to_dict() for record in records]
+  try:
+    records = _app_owe().get_records()
+  except DatabaseError:
+    logger.exception("Database error in get_records")
+    return {
+      "success": False,
+      "error": "Database error",
+    }, HTTPStatus.INTERNAL_SERVER_ERROR
+  return {
+    "success": True,
+    "records": [record.to_dict() for record in records],
+  }, HTTPStatus.OK
 
 
 def _validate_add_records_request(
@@ -147,7 +166,15 @@ def add_records() -> tuple[dict[str, Any], HTTPStatus]:
     return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
 
   owe_service = _app_owe()
-  users = owe_service.get_users(active_only=True)
+  try:
+    users = owe_service.get_users(active_only=True)
+  except DatabaseError:
+    logger.exception("Database error in add_records")
+    return {
+      "success": False,
+      "error": "Database error",
+    }, HTTPStatus.INTERNAL_SERVER_ERROR
+
   valid_emails = {user.email for user in users}
   error = _validate_add_records_request(req, valid_emails)
   if error is not None:
@@ -163,7 +190,7 @@ def add_records() -> tuple[dict[str, Any], HTTPStatus]:
   )
   try:
     records = owe_service.add_records(record)
-  except sqlite3.Error:
+  except DatabaseError:
     logger.exception("Database error in add_records")
     return {
       "success": False,
@@ -184,7 +211,6 @@ def add_records() -> tuple[dict[str, Any], HTTPStatus]:
 @api.route("/records/status", methods=["PATCH"])
 def set_records_active() -> tuple[dict[str, Any], HTTPStatus]:
   """Update the active flag for a batch of records."""
-  owe_service = _app_owe()
   req_json = request.get_json(silent=True)
   if req_json is None:
     return {
@@ -196,38 +222,58 @@ def set_records_active() -> tuple[dict[str, Any], HTTPStatus]:
   if req is None:
     return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
 
+  owe_service = _app_owe()
   try:
     owe_service.set_records_active(
       req.ids,
       active=req.active,
     )
-    announcer = _app_telegram_announcer()
-    if announcer:
-      records = owe_service.get_records_by_ids(req.ids)
-      users = owe_service.get_users()
-      requester = _get_requester()
-      threading.Thread(
-        target=announcer.announce_record_status_change,
-        args=(
-          records,
-          users,
-          requester,
-        ),
-        kwargs={"active": req.active},
-        daemon=False,
-      ).start()
-  except sqlite3.Error:
+  except DatabaseError:
     logger.exception("Database error in set_records_active")
     return {
       "success": False,
       "error": "Database error",
     }, HTTPStatus.INTERNAL_SERVER_ERROR
 
+  announcer = _app_telegram_announcer()
+  if announcer:
+    try:
+      records = owe_service.get_records_by_ids(req.ids)
+      users = owe_service.get_users()
+    except DatabaseError:
+      logger.exception("Database error in set_records_active")
+      return {
+        "success": False,
+        "error": "Database error",
+      }, HTTPStatus.INTERNAL_SERVER_ERROR
+
+    requester = _get_requester()
+    threading.Thread(
+      target=announcer.announce_record_status_change,
+      args=(
+        records,
+        users,
+        requester,
+      ),
+      kwargs={"active": req.active},
+      daemon=False,
+    ).start()
+
   return {"success": True}, HTTPStatus.OK
 
 
 @api.route("/summary")
-def summary() -> list[dict[str, Any]]:
+def summary() -> tuple[dict[str, Any], HTTPStatus]:
   """Return settlement transactions computed from net balances."""
-  summary = _app_owe().get_summary()
-  return [transaction.to_dict() for transaction in summary]
+  try:
+    summary = _app_owe().get_summary()
+  except DatabaseError:
+    logger.exception("Database error in summary")
+    return {
+      "success": False,
+      "error": "Database error",
+    }, HTTPStatus.INTERNAL_SERVER_ERROR
+  return {
+    "success": True,
+    "summary": [transaction.to_dict() for transaction in summary],
+  }, HTTPStatus.OK
