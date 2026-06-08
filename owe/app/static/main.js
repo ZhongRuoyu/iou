@@ -124,7 +124,8 @@ async function updateRecords() {
 
   [...table.rows].forEach(row => row.remove());
   records
-    .sort((a, b) => b.created_at - a.created_at)
+    .sort()
+    .reverse()
     .forEach(record => {
       const row = table.insertRow();
       const checkboxCell = row.insertCell();
