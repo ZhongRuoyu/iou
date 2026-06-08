@@ -1,19 +1,37 @@
 import logging
-import threading
 from html import escape
-from http import HTTPStatus
-from typing import Any, cast
 
-from flask import Blueprint, Flask, current_app, request
+from fastapi import (
+  BackgroundTasks,
+  FastAPI,
+  Request,
+  Response,
+  status,
+)
+from fastapi.responses import JSONResponse
 
 from owe import AggregatedRecord, DatabaseError, Owe, RecordType, SqliteDatabase
 
-from .config import AppConfigItems
-from .schema import AddRecordsRequest, SetRecordsActiveRequest, parse
+from .config import Config
+from .schema import (
+  AddRecordsRequest,
+  AddRecordsResponse,
+  ErrorResponse,
+  GetConfigResponse,
+  GetRecordsResponse,
+  GetSummaryResponse,
+  GetUsersResponse,
+  Record,
+  SetRecordsActiveRequest,
+  SetRecordsActiveResponse,
+  SummaryTransaction,
+  User,
+)
 from .telegram_announcer import TelegramAnnouncer
 
-OWE_SERVICE_EXTENSION_KEY = "owe.service"
-TELEGRAM_ANNOUNCER_EXTENSION_KEY = "owe.telegram_announcer"
+CONFIG_STATE_KEY = "config"
+OWE_SERVICE_STATE_KEY = "owe_service"
+TELEGRAM_ANNOUNCER_STATE_KEY = "telegram_announcer"
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +40,48 @@ class AppServiceTypeError(TypeError):
   """Raised when an app-level service has an unexpected type."""
 
 
-def _app_config() -> AppConfigItems:
-  """Return typed app config values for the current request context."""
-  return cast("AppConfigItems", current_app.config)
+class APIError(Exception):
+  """Raised for expected API errors with a specific HTTP status code."""
+
+  status_code: int
+  message: str
+
+  def __init__(
+    self,
+    message: str,
+    status_code: int = status.HTTP_400_BAD_REQUEST,
+  ) -> None:
+    super().__init__(message)
+    self.message = message
+    self.status_code = status_code
 
 
-def _app_owe() -> Owe:
-  """Return the Owe service bound to the current Flask app instance."""
-  owe_service = current_app.extensions.get(OWE_SERVICE_EXTENSION_KEY)
+class APIDatabaseError(APIError):
+  """Raised for expected API errors caused by database issues."""
+
+  def __init__(self, message: str = "Database error") -> None:
+    super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _app_config(request: Request) -> Config:
+  """Return the config for the current app instance."""
+  config = getattr(request.app.state, CONFIG_STATE_KEY, None)
+  if not isinstance(config, Config):
+    raise AppServiceTypeError
+  return config
+
+
+def _app_owe(request: Request) -> Owe:
+  """Return the Owe service bound to the current app instance."""
+  owe_service = getattr(request.app.state, OWE_SERVICE_STATE_KEY, None)
   if not isinstance(owe_service, Owe):
     raise AppServiceTypeError
   return owe_service
 
 
-def _app_telegram_announcer() -> TelegramAnnouncer | None:
+def _app_telegram_announcer(request: Request) -> TelegramAnnouncer | None:
   """Return app-level Telegram announcer, or ``None`` when disabled."""
-  announcer = current_app.extensions.get(TELEGRAM_ANNOUNCER_EXTENSION_KEY)
+  announcer = getattr(request.app.state, TELEGRAM_ANNOUNCER_STATE_KEY, None)
   if announcer is None:
     return None
   if not isinstance(announcer, TelegramAnnouncer):
@@ -45,90 +89,108 @@ def _app_telegram_announcer() -> TelegramAnnouncer | None:
   return announcer
 
 
-def _get_requester() -> str:
+def _get_requester(request: Request) -> str:
   """Return requester identity from configured header or remote address."""
-  request_email_header = _app_config()["REQUEST_EMAIL_HEADER"]
+  config = _app_config(request)
+
+  request_email_header = config.request_email_header
   if request_email_header:
     email = request.headers.get(request_email_header)
     if email:
       return email
 
-  trust_proxy = _app_config()["TRUST_PROXY"]
+  trust_proxy = config.trust_proxy
   if trust_proxy:
     x_forwarded_for = request.headers.get("X-Forwarded-For")
     if x_forwarded_for and (ip := x_forwarded_for.split(",")[0].strip()):
       return ip
 
-  return request.remote_addr or "unknown"
+  if request.client and request.client.host:
+    return request.client.host
+
+  return "unknown"
 
 
-def init(app: Flask) -> None:
-  """Initialize logging, schema, and app-level services."""
-  config = cast("AppConfigItems", app.config)
+def init(app: FastAPI, config: Config) -> None:
+  """Initialize logging, schema, and API-level services."""
+  setattr(app.state, CONFIG_STATE_KEY, config)
 
   logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    level=getattr(logging, config["LOG_LEVEL"], logging.INFO),
+    level=getattr(logging, config.log_level, logging.INFO),
   )
 
-  database = SqliteDatabase(config["DATABASE"], create=True)
+  database = SqliteDatabase(config.database_path, create=True)
   database.init()
   owe_service = Owe(database, logger=logger)
-  app.extensions[OWE_SERVICE_EXTENSION_KEY] = owe_service
+  setattr(app.state, OWE_SERVICE_STATE_KEY, owe_service)
 
-  bot_token = config["TELEGRAM_BOT_TOKEN"]
-  chat_id = config["TELEGRAM_CHAT_ID"]
+  bot_token = config.telegram_bot_token
+  chat_id = config.telegram_chat_id
   if bot_token and chat_id:
-    app.extensions[TELEGRAM_ANNOUNCER_EXTENSION_KEY] = TelegramAnnouncer(
+    telegram_announcer = TelegramAnnouncer(
       bot_token=bot_token,
       chat_id=chat_id,
-      currency=config["CURRENCY"],
+      currency=config.currency,
     )
   else:
-    app.extensions[TELEGRAM_ANNOUNCER_EXTENSION_KEY] = None
+    telegram_announcer = None
+  setattr(app.state, TELEGRAM_ANNOUNCER_STATE_KEY, telegram_announcer)
 
 
-api = Blueprint("api", __name__)
+api = FastAPI(
+  docs_url=None,
+  redoc_url=None,
+  openapi_url=None,
+)
 
 
-@api.route("/config")
-def get_config() -> tuple[dict[str, Any], HTTPStatus]:
+@api.exception_handler(APIError)
+async def api_error_handler(_request: Request, error: APIError) -> Response:
+  """
+  Handle expected API errors by returning the specified status code and message.
+  """
+  print(f"API error: {error.message} (status code: {error.status_code})")
+  return JSONResponse(
+    status_code=error.status_code,
+    content=ErrorResponse(message=error.message).model_dump(),
+  )
+
+
+@api.get("/config")
+async def get_config(request: Request) -> GetConfigResponse:
   """Return client-facing configuration values."""
-  return {"currency": _app_config()["CURRENCY"]}, HTTPStatus.OK
+  return GetConfigResponse(
+    currency=_app_config(request).currency,
+  )
 
 
-@api.route("/users")
-def get_users() -> tuple[dict[str, Any], HTTPStatus]:
+@api.get("/users")
+async def get_users(request: Request) -> GetUsersResponse:
   """Return active users."""
   try:
-    users = _app_owe().get_users(active_only=True)
+    users = _app_owe(request).get_users(active_only=True)
   except DatabaseError:
     logger.exception("Database error in get_users")
-    return {
-      "success": False,
-      "error": "Database error",
-    }, HTTPStatus.INTERNAL_SERVER_ERROR
-  return {
-    "success": True,
-    "users": [user.to_dict() for user in users],
-  }, HTTPStatus.OK
+    raise APIDatabaseError from None
+  return GetUsersResponse(
+    success=True,
+    users=[User.from_owe_user(user) for user in users],
+  )
 
 
-@api.route("/records")
-def get_records() -> tuple[dict[str, Any], HTTPStatus]:
+@api.get("/records")
+async def get_records(request: Request) -> GetRecordsResponse:
   """Return all records."""
   try:
-    records = _app_owe().get_records()
+    records = _app_owe(request).get_records()
   except DatabaseError:
     logger.exception("Database error in get_records")
-    return {
-      "success": False,
-      "error": "Database error",
-    }, HTTPStatus.INTERNAL_SERVER_ERROR
-  return {
-    "success": True,
-    "records": [record.to_dict() for record in records],
-  }, HTTPStatus.OK
+    raise APIDatabaseError from None
+  return GetRecordsResponse(
+    success=True,
+    records=[Record.from_owe_record(record) for record in records],
+  )
 
 
 def _validate_add_records_request(
@@ -151,129 +213,96 @@ def _validate_add_records_request(
   return None
 
 
-@api.route("/records", methods=["POST"])
-def add_records() -> tuple[dict[str, Any], HTTPStatus]:
+@api.post("/records")
+async def add_records(
+  request: Request,
+  body: AddRecordsRequest,
+  background_tasks: BackgroundTasks,
+) -> AddRecordsResponse:
   """Create an aggregated record and persist its split entries."""
-  req_json = request.get_json(silent=True)
-  if req_json is None:
-    return {
-      "success": False,
-      "error": "Request body must be JSON",
-    }, HTTPStatus.BAD_REQUEST
-
-  req, error = parse(req_json, AddRecordsRequest)
-  if req is None:
-    return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
-
-  owe_service = _app_owe()
+  owe_service = _app_owe(request)
   try:
     users = owe_service.get_users(active_only=True)
   except DatabaseError:
     logger.exception("Database error in add_records")
-    return {
-      "success": False,
-      "error": "Database error",
-    }, HTTPStatus.INTERNAL_SERVER_ERROR
+    raise APIDatabaseError from None
 
   valid_emails = {user.email for user in users}
-  error = _validate_add_records_request(req, valid_emails)
+  error = _validate_add_records_request(body, valid_emails)
   if error is not None:
-    return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
+    raise APIError(error, status.HTTP_400_BAD_REQUEST) from None
 
   record = AggregatedRecord(
-    type=RecordType(req.type),
-    lender=req.lender,
-    borrowers=req.borrowers,
-    amount=req.amount,
-    created_by=_get_requester(),
-    remarks=req.remarks,
+    type=RecordType(body.type),
+    lender=body.lender,
+    borrowers=body.borrowers,
+    amount=body.amount,
+    created_by=_get_requester(request),
+    remarks=body.remarks,
   )
   try:
     records = owe_service.add_records(record)
   except DatabaseError:
     logger.exception("Database error in add_records")
-    return {
-      "success": False,
-      "error": "Database error",
-    }, HTTPStatus.INTERNAL_SERVER_ERROR
+    raise APIDatabaseError from None
 
-  announcer = _app_telegram_announcer()
+  announcer = _app_telegram_announcer(request)
   if announcer:
-    threading.Thread(
-      target=announcer.announce_records,
-      args=(records, users),
-      daemon=False,
-    ).start()
+    background_tasks.add_task(announcer.announce_records, records, users)
 
-  return {"success": True}, HTTPStatus.OK
+  return AddRecordsResponse(
+    success=True,
+    records=[Record.from_owe_record(record) for record in records],
+  )
 
 
-@api.route("/records/status", methods=["PATCH"])
-def set_records_active() -> tuple[dict[str, Any], HTTPStatus]:
+@api.patch("/records/status")
+async def set_records_active(
+  request: Request,
+  body: SetRecordsActiveRequest,
+  background_tasks: BackgroundTasks,
+) -> SetRecordsActiveResponse:
   """Update the active flag for a batch of records."""
-  req_json = request.get_json(silent=True)
-  if req_json is None:
-    return {
-      "success": False,
-      "error": "Request body must be JSON",
-    }, HTTPStatus.BAD_REQUEST
-
-  req, error = parse(req_json, SetRecordsActiveRequest)
-  if req is None:
-    return {"success": False, "error": error}, HTTPStatus.BAD_REQUEST
-
-  owe_service = _app_owe()
+  owe_service = _app_owe(request)
   try:
-    owe_service.set_records_active(
-      req.ids,
-      active=req.active,
-    )
+    owe_service.set_records_active(body.ids, active=body.active)
   except DatabaseError:
     logger.exception("Database error in set_records_active")
-    return {
-      "success": False,
-      "error": "Database error",
-    }, HTTPStatus.INTERNAL_SERVER_ERROR
+    raise APIDatabaseError from None
 
-  announcer = _app_telegram_announcer()
+  announcer = _app_telegram_announcer(request)
   if announcer:
     try:
-      records = owe_service.get_records_by_ids(req.ids)
+      records = owe_service.get_records_by_ids(body.ids)
       users = owe_service.get_users()
     except DatabaseError:
       logger.exception("Database error in set_records_active")
-      return {
-        "success": False,
-        "error": "Database error",
-      }, HTTPStatus.INTERNAL_SERVER_ERROR
+      raise APIDatabaseError from None
 
-    requester = _get_requester()
-    threading.Thread(
-      target=announcer.announce_record_status_change,
-      args=(
-        records,
-        users,
-        requester,
-      ),
-      kwargs={"active": req.active},
-      daemon=False,
-    ).start()
+    requester = _get_requester(request)
+    background_tasks.add_task(
+      announcer.announce_record_status_change,
+      records,
+      users,
+      requester,
+      active=body.active,
+    )
 
-  return {"success": True}, HTTPStatus.OK
+  return SetRecordsActiveResponse(success=True)
 
 
-@api.route("/summary")
-def summary() -> tuple[dict[str, Any], HTTPStatus]:
+@api.get("/summary")
+async def get_summary(request: Request) -> GetSummaryResponse:
   """Return settlement transactions computed from net balances."""
   try:
-    summary = _app_owe().get_summary()
+    result = _app_owe(request).get_summary()
   except DatabaseError:
-    logger.exception("Database error in summary")
-    return {
-      "success": False,
-      "error": "Database error",
-    }, HTTPStatus.INTERNAL_SERVER_ERROR
-  return {
-    "success": True,
-    "summary": [transaction.to_dict() for transaction in summary],
-  }, HTTPStatus.OK
+    logger.exception("Database error in get_summary")
+    raise APIDatabaseError from None
+  return GetSummaryResponse(
+    success=True,
+    summary=[
+      SummaryTransaction.from_owe_summary_transaction(transaction)
+      for transaction in result
+    ],
+  )

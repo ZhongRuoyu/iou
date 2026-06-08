@@ -1,26 +1,31 @@
 import os
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict
 
 
-class AppConfigItems(TypedDict):
-  LOG_LEVEL: str
-  DATABASE: Path
-  CURRENCY: str
-  REQUEST_EMAIL_HEADER: str | None
-  TRUST_PROXY: bool
-  TELEGRAM_BOT_TOKEN: str | None
-  TELEGRAM_CHAT_ID: str | None
+@dataclass
+class Config:
+  url_prefix: str
+  api_only: bool
+  log_level: str
+  database_path: Path
+  currency: str
+  request_email_header: str | None
+  trust_proxy: bool
+  telegram_bot_token: str | None
+  telegram_chat_id: str | None
 
 
-def load_env_config() -> AppConfigItems:
+def load_env_config() -> Config:
   """Load application config values from environment variables."""
-  return {
-    "LOG_LEVEL": os.getenv("OWE_LOG_LEVEL", "INFO").upper(),
-    "DATABASE": Path(os.getenv("OWE_DATABASE", "owe.db")),
-    "CURRENCY": os.getenv("OWE_CURRENCY", "USD"),
-    "REQUEST_EMAIL_HEADER": os.getenv("OWE_REQUEST_EMAIL_HEADER"),
-    "TRUST_PROXY": bool(os.getenv("OWE_TRUST_PROXY")),
-    "TELEGRAM_BOT_TOKEN": os.getenv("OWE_TELEGRAM_BOT_TOKEN"),
-    "TELEGRAM_CHAT_ID": os.getenv("OWE_TELEGRAM_CHAT_ID"),
-  }
+  return Config(
+    url_prefix=os.getenv("OWE_URL_PREFIX", ""),
+    api_only=bool(os.getenv("OWE_API_ONLY")),
+    log_level=os.getenv("OWE_LOG_LEVEL", "INFO").upper(),
+    database_path=Path(os.getenv("OWE_DATABASE", "owe.db")),
+    currency=os.getenv("OWE_CURRENCY", "USD"),
+    request_email_header=os.getenv("OWE_REQUEST_EMAIL_HEADER"),
+    trust_proxy=bool(os.getenv("OWE_TRUST_PROXY")),
+    telegram_bot_token=os.getenv("OWE_TELEGRAM_BOT_TOKEN"),
+    telegram_chat_id=os.getenv("OWE_TELEGRAM_CHAT_ID"),
+  )

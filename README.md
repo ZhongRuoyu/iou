@@ -101,51 +101,24 @@ or `json` or `csv` for more machine-friendly output.
 Owe also includes a server in the `owe.app` module, which serves the same
 functionality over a REST API, with an optional web user interface for managing
 records and users.
-To get started, you can run the server with uv or pip as follows:
+To get started, you can run the server with uv and an ASGI server like
+[Uvicorn](https://uvicorn.dev/), as follows:
 
 ```sh
-# Run the development server
-uvx --with owe flask --app owe.app run
-# Or run the production server with a WSGI server like Gunicorn
-uvx --with owe gunicorn "owe.app:create_app()"
+uvx --with owe uvicorn --factory owe.app:create_app
 ```
 
 Or if you prefer pip:
 
 ```sh
-# Install the package
-pip install owe
-# Run the development server
-flask --app owe.app run
-# Or run the production server with a WSGI server like Gunicorn
-pip install gunicorn
-gunicorn "owe.app:create_app()"
+pip install owe uvicorn
+uvicorn --factory owe.app:create_app
 ```
 
 Note that the server does not handle authentication or authorization by itself,
 so it is strongly recommended to run it in a trusted environment (e.g. behind a
 reverse proxy with access control or in a trusted local network) to prevent
 unauthorized access.
-
-### App factory customization
-
-The application exposes an app factory, `create_app`, with two optional
-keyword arguments:
-
-- `url_prefix`: Prefix all registered routes (e.g. `"/owe"`).
-- `api_only`: Register only the API blueprint (skip the bundled UI).
-
-For example, to run API-only routes under `/owe`:
-
-```sh
-# With Flask
-uvx --with owe flask --app "owe.app:create_app(api_only=True, url_prefix='/owe')" run
-
-# With Gunicorn
-uvx --with owe gunicorn "owe.app:create_app(api_only=True, url_prefix='/owe')"
-```
-
-With this configuration, API endpoints are served under `/owe/...`.
 
 ### Telegram notifications
 
@@ -159,6 +132,13 @@ next section.
 
 The application can be configured with the following environment variables:
 
+- `OWE_URL_PREFIX`: URL prefix for all endpoints (e.g. `/owe`).
+  Default: unset.
+- `OWE_API_ONLY`: If set to a non-empty value (e.g. `true`), the server will
+  serve the API at the specified URL prefix without the web user interface;
+  if unset, the server will serve a web user interface at the URL prefix, and
+  the API will be available under the `/api` subpath of the URL prefix.
+  Default: unset (i.e. serve the web UI).
 - `OWE_LOG_LEVEL`: Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`,
   `CRITICAL`).
   Default: `INFO`.
@@ -212,8 +192,8 @@ IP address otherwise.
 
 ### Running the web server with Docker
 
-The Docker image includes the [Gunicorn](https://gunicorn.org/) WSGI server,
-which you can use to run the application in production:
+The Docker image includes the Uvicorn ASGI server, which you can use to run the
+application in production:
 
 ```sh
 docker run \
@@ -221,7 +201,7 @@ docker run \
   -v "$PWD/owe.db":/owe.db \
   -e OWE_CURRENCY=USD \
   zhongruoyu/owe \
-  gunicorn "owe.app:create_app()" --bind "0.0.0.0:8000" --workers 4
+  uvicorn --factory owe.app:create_app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 ## License

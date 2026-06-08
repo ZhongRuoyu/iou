@@ -1,21 +1,29 @@
 from pathlib import Path
 
-from flask import Blueprint, Response
+from fastapi import FastAPI
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.staticfiles import StaticFiles
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
+STATIC_DIR = (Path(__file__).resolve().parent / "static").resolve()
 
-static = Blueprint(
-  "owe",
-  __name__,
-  url_prefix="",
-  static_folder=STATIC_DIR,
-  static_url_path="",
+
+static = FastAPI(
+  docs_url=None,
+  redoc_url=None,
+  openapi_url=None,
 )
+static.mount("/", StaticFiles(directory=STATIC_DIR, html=True))
 
 
-@static.after_request
-def add_csp(response: Response) -> Response:
-  """Attach a strict content security policy to outgoing responses."""
+@static.middleware("http")
+async def dispatch(
+  request: Request,
+  call_next: RequestResponseEndpoint,
+) -> Response:
+  """Add a strict content security policy to the outgoing response."""
+  response = await call_next(request)
   response.headers["Content-Security-Policy"] = (
     "default-src 'self'; "
     "connect-src 'self' https://cdnjs.cloudflare.com; "
@@ -24,9 +32,3 @@ def add_csp(response: Response) -> Response:
     "img-src 'self' data:; "
   )
   return response
-
-
-@static.route("/")
-def index() -> Response:
-  """Serve the single-page application entry point."""
-  return static.send_static_file("index.html")

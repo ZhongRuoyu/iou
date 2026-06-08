@@ -24,11 +24,11 @@ RUN \
   <<RUN
   set -eux
   uv sync --all-groups --all-extras
-  uv pip install gunicorn
+  uv pip install uvicorn
 RUN
 
 FROM python:3.14.5-alpine
 
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-CMD [ "gunicorn", "owe.app:create_app()" ]
+CMD [ "uvicorn", "owe.app:create_app" ]
