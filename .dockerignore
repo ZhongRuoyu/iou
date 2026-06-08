@@ -12,6 +12,9 @@ build
 dist
 *.egg-info
 
+# Test files
+.test-artifacts
+
 # Runtime files
 .env
 *.csv
