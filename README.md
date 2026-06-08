@@ -53,7 +53,7 @@ and the `main` tag tracks the latest commit on the main branch.
 You may run Owe with Docker as follows:
 
 ```sh
-docker run -v "$PWD/owe.db":/owe.db zhongruoyu/owe owe record list
+docker run --rm -v "$PWD/owe.db":/owe.db zhongruoyu/owe owe record list
 ```
 
 This Docker command runs the `owe record list` command to list all records in
@@ -196,7 +196,7 @@ The Docker image includes the Uvicorn ASGI server, which you can use to run the
 application in production:
 
 ```sh
-docker run \
+docker run -d \
   -p 8000:8000 \
   -v "$PWD/owe.db":/owe.db \
   -e OWE_CURRENCY=USD \
