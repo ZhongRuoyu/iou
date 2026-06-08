@@ -16,8 +16,34 @@ Core concepts:
   `PAYMENT` (money has been physically transferred).
   Records can be cancelled (invalidated) if entered by mistake.
 - Summary - the net balances across all active records, reduced to the minimum
-  number of settlement transactions using
-  [a simple greedy algorithm](https://stackoverflow.com/a/15723286).
+  number of settlement transactions.
+
+## Settlement algorithm
+
+Owe computes summaries by first reducing all active records to each user's net
+balance.
+Users with zero balance are ignored.
+For the remaining users, the exact minimum-transfer settlement problem is
+[NP-hard](https://math.stackexchange.com/questions/339148).
+It is commonly known as the optimal account balancing problem.
+
+Owe uses an exact bitmask dynamic programming algorithm over zero-sum subsets:
+
+1. Precompute the sum of every subset of nonzero balances.
+2. Partition the users into the maximum possible number of disjoint zero-sum
+   groups.
+3. Settle each zero-sum group independently.
+
+The reason this minimizes transfers is that a zero-sum subset of $k$ nonzero
+balances can always be settled in exactly $k−1$ transfers, and cannot use fewer.
+If there are $n$ users with nonzero balances, the total number of transactions
+is minimized by partitioning them into the largest possible collection of
+disjoint zero-sum subsets, giving a minimum of $n−k_\text{max}$ transfers, where
+$k_\text{max}$ is the number of subsets in the optimal partition.
+
+This exact algorithm has exponential worst-case cost in the number of users
+with nonzero balances, so it is intended for typical small group bill splitting
+rather than very large accounting ledgers.
 
 ## Requirements
 

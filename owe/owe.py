@@ -1,3 +1,4 @@
+from functools import cache
 from logging import Logger
 
 from .database import Database
@@ -80,12 +81,71 @@ class Owe:
   def get_summary(self) -> list[SummaryTransaction]:
     """Return a minimized transfer plan from current balances."""
     net_balances = self._database.get_net_balances()
-    creditors = [
-      (user, balance) for user, balance in net_balances.items() if balance > 0
+    balances = [
+      (user, balance) for user, balance in net_balances.items() if balance != 0
     ]
-    debtors = [
-      (user, -balance) for user, balance in net_balances.items() if balance < 0
+    total = sum(balance for _, balance in balances)
+    if total != 0:
+      msg = "Net balances must sum to zero"
+      raise ValueError(msg)
+
+    transactions: list[SummaryTransaction] = []
+    for group in Owe._zero_sum_groups(balances):
+      transactions.extend(Owe._settle_zero_sum_group(group))
+
+    return transactions
+
+  @staticmethod
+  def _zero_sum_groups(
+    balances: list[tuple[str, int]],
+  ) -> list[list[tuple[str, int]]]:
+    """Partition balances into the most possible zero-sum groups."""
+    amounts = [amount for _, amount in balances]
+    masks = Owe._zero_sum_group_masks(amounts)
+    return [
+      [balances[index] for index in range(len(balances)) if mask & (1 << index)]
+      for mask in masks
     ]
+
+  @staticmethod
+  def _zero_sum_group_masks(balances: list[int]) -> list[int]:
+    """Return masks for an optimal zero-sum partition of balances."""
+    full_mask = (1 << len(balances)) - 1
+    subset_sums = [0] * (full_mask + 1)
+    for mask in range(1, full_mask + 1):
+      low_bit = mask & -mask
+      index = low_bit.bit_length() - 1
+      subset_sums[mask] = subset_sums[mask ^ low_bit] + balances[index]
+
+    @cache
+    def best_partition(mask: int) -> tuple[int, ...]:
+      if mask == 0:
+        return ()
+
+      first_bit = mask & -mask
+      remaining = mask ^ first_bit
+      best: tuple[int, ...] = ()
+      submask = remaining
+      while True:
+        group = submask | first_bit
+        if subset_sums[group] == 0:
+          candidate = (group, *best_partition(mask ^ group))
+          if len(candidate) > len(best):
+            best = candidate
+        if submask == 0:
+          break
+        submask = (submask - 1) & remaining
+      return best
+
+    return list(best_partition(full_mask))
+
+  @staticmethod
+  def _settle_zero_sum_group(
+    balances: list[tuple[str, int]],
+  ) -> list[SummaryTransaction]:
+    """Return settlement transactions for one zero-sum balance group."""
+    creditors = [(user, balance) for user, balance in balances if balance > 0]
+    debtors = [(user, -balance) for user, balance in balances if balance < 0]
     creditors.sort(key=lambda x: x[1], reverse=True)
     debtors.sort(key=lambda x: x[1], reverse=True)
 

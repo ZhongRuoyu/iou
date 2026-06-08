@@ -26,6 +26,36 @@ def make_record(record_id: int) -> Record:
   )
 
 
+def assert_summary_settles_balances(
+  summary: list[SummaryTransaction],
+  balances: dict[str, int],
+) -> None:
+  """Assert settlement transactions reduce all balances to zero."""
+  settled_balances = dict(balances)
+  for transaction in summary:
+    assert transaction.amount > 0
+    settled_balances[transaction.from_user] = (
+      settled_balances.get(transaction.from_user, 0) + transaction.amount
+    )
+    settled_balances[transaction.to_user] = (
+      settled_balances.get(transaction.to_user, 0) - transaction.amount
+    )
+
+  assert all(balance == 0 for balance in settled_balances.values())
+
+
+def assert_summary_uses_original_directions(
+  summary: list[SummaryTransaction],
+  balances: dict[str, int],
+) -> None:
+  """Assert settlement transactions go from debtors to creditors."""
+  debtors = {user for user, balance in balances.items() if balance < 0}
+  creditors = {user for user, balance in balances.items() if balance > 0}
+
+  assert all(transaction.from_user in debtors for transaction in summary)
+  assert all(transaction.to_user in creditors for transaction in summary)
+
+
 class OweTests(unittest.TestCase):
   def setUp(self) -> None:
     """Create an Owe service with a mocked database backend."""
@@ -166,6 +196,49 @@ class OweTests(unittest.TestCase):
         amount=20,
       ),
     ]
+    self.database.get_net_balances.assert_called_once_with()
+
+  def test_get_summary_finds_lower_count_than_greedy(self) -> None:
+    """
+    Ensure summary optimizes the transaction count across zero-sum groups.
+    """
+    optimal_transaction_count = 4
+    balances = {
+      "creditor-1": 5,
+      "creditor-2": 5,
+      "creditor-3": 5,
+      "debtor-1": -6,
+      "debtor-2": -5,
+      "debtor-3": -4,
+    }
+    self.database.get_net_balances.return_value = balances
+
+    summary = self.owe.get_summary()
+
+    assert len(summary) == optimal_transaction_count
+    assert_summary_settles_balances(summary, balances)
+    assert_summary_uses_original_directions(summary, balances)
+    self.database.get_net_balances.assert_called_once_with()
+
+  def test_get_summary_ignores_zero_balances(self) -> None:
+    """Ensure zero balances do not create unnecessary transactions."""
+    balances = {
+      "alice": 0,
+      "bob": 25,
+      "carol": -25,
+    }
+    self.database.get_net_balances.return_value = balances
+
+    summary = self.owe.get_summary()
+
+    assert summary == [
+      SummaryTransaction(
+        from_user="carol",
+        to_user="bob",
+        amount=25,
+      ),
+    ]
+    assert_summary_settles_balances(summary, balances)
     self.database.get_net_balances.assert_called_once_with()
 
   def test_get_summary_returns_empty_for_balanced_book(self) -> None:
