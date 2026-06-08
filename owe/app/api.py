@@ -148,7 +148,7 @@ async def api_error_handler(_request: Request, error: APIError) -> Response:
   print(f"API error: {error.message} (status code: {error.status_code})")
   return JSONResponse(
     status_code=error.status_code,
-    content=ErrorResponse(message=error.message).model_dump(),
+    content=ErrorResponse(error=error.message).model_dump(),
   )
 
 

@@ -95,7 +95,7 @@ class ErrorResponse(BaseModel):
   """Generic error response model."""
 
   success: bool = False
-  message: str
+  error: str
 
 
 class GetConfigResponse(AppConfig):
