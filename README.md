@@ -107,7 +107,9 @@ Use it as follows:
   - `--type <DEBT|PAYMENT>`: Type of the record (required).
   - `--lender <id>`: ID of the lender (required).
   - `--borrower <id>`: ID of the borrower (required).
-    Pass multiple `--borrower` for multiple borrowers.
+    Pass multiple `--borrower` for multiple distinct borrowers.
+    The lender may be included for self-share splitting, but at least one
+    borrower must differ from the lender.
   - `--amount <amount>`: Total amount (will be split evenly among borrowers)
     (required).
   - `--created-by <id>`: ID of the user creating the record (required).
@@ -202,6 +204,9 @@ The server exposes the following API endpoints:
   - `type`: "DEBT" or "PAYMENT"
   - `lender`: ID of the lender
   - `borrowers`: list of IDs of the borrowers
+    Borrowers must be unique.
+    The lender may be included for self-share splitting, but at least one
+    borrower must differ from the lender.
   - `amount`: total amount (will be split evenly among borrowers)
   - `remarks`: optional remarks for the record
 - `PATCH /api/records/status`: Update the status of records.

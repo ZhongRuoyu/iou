@@ -237,6 +237,8 @@ async def add_records(
   )
   try:
     records = owe_service.add_records(record)
+  except ValueError as error:
+    raise APIError(str(error), status.HTTP_400_BAD_REQUEST) from None
   except DatabaseError:
     logger.exception("Database error in add_records")
     raise APIDatabaseError from None

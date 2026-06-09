@@ -198,7 +198,7 @@ def add_records(  # noqa: PLR0913
   )
   try:
     records = owe.add_records(aggregated_record)
-  except DatabaseError as error:
+  except (DatabaseError, ValueError) as error:
     print(f"Error: {error}", file=sys.stderr)
     return 1
 

@@ -162,6 +162,58 @@ class OweTests(unittest.TestCase):
       "borrower-2",
     ]
 
+  def test_add_records_allows_lender_self_share(self) -> None:
+    """Ensure the lender may be included for self-share splitting."""
+    record = AggregatedRecord(
+      type=RecordType.DEBT,
+      lender="lender",
+      borrowers=["lender", "borrower-1", "borrower-2"],
+      amount=100,
+      created_by="creator",
+      remarks="Dinner",
+    )
+
+    inserted_records = self.owe.add_records(record)
+
+    self.database.add_records.assert_called_once_with(inserted_records)
+    assert [r.amount for r in inserted_records] == [34, 34]
+    assert [r.borrower for r in inserted_records] == [
+      "borrower-1",
+      "borrower-2",
+    ]
+
+  def test_add_records_rejects_duplicate_borrowers(self) -> None:
+    """Ensure duplicate borrower IDs do not create duplicate debts."""
+    record = AggregatedRecord(
+      type=RecordType.DEBT,
+      lender="lender",
+      borrowers=["borrower", "borrower"],
+      amount=100,
+      created_by="creator",
+      remarks="Dinner",
+    )
+
+    with pytest.raises(ValueError, match="Borrowers must be unique"):
+      self.owe.add_records(record)
+
+    self.database.add_records.assert_not_called()
+
+  def test_add_records_rejects_lender_only_borrowers(self) -> None:
+    """Ensure borrower lists must produce at least one stored record."""
+    record = AggregatedRecord(
+      type=RecordType.DEBT,
+      lender="lender",
+      borrowers=["lender"],
+      amount=100,
+      created_by="creator",
+      remarks="Dinner",
+    )
+
+    with pytest.raises(ValueError, match="must differ from the lender"):
+      self.owe.add_records(record)
+
+    self.database.add_records.assert_not_called()
+
   def test_set_records_active_updates_database(self) -> None:
     """Ensure set_records_active delegates status updates to the database."""
     self.owe.set_records_active([3, 7], active=False)

@@ -145,6 +145,7 @@ class AggregatedRecord:
 
   def to_records(self) -> list[Record]:
     """Split an aggregated record into per-borrower ``Record`` entries."""
+    self._validate_borrowers()
     each_amount = self._ceildiv(self.amount, len(self.borrowers))
     created_at = dt.datetime.now(tz=dt.timezone.utc)
     return [
@@ -160,6 +161,20 @@ class AggregatedRecord:
       for borrower in self.borrowers
       if borrower != self.lender
     ]
+
+  def _validate_borrowers(self) -> None:
+    """Validate borrower list invariants before splitting records."""
+    if not self.borrowers:
+      msg = "At least one borrower is required"
+      raise ValueError(msg)
+
+    if len(set(self.borrowers)) != len(self.borrowers):
+      msg = "Borrowers must be unique"
+      raise ValueError(msg)
+
+    if all(borrower == self.lender for borrower in self.borrowers):
+      msg = "At least one borrower must differ from the lender"
+      raise ValueError(msg)
 
   @staticmethod
   def _ceildiv(a: int, b: int) -> int:
