@@ -62,6 +62,8 @@ You can get started as follows:
 ```sh
 # With uv
 uv tool install owe
+# Or run directly with uvx
+uvx owe record list
 
 # With pip
 pip install owe
