@@ -61,6 +61,9 @@ def assert_summary_uses_original_directions(
 
 
 class OweTests(unittest.TestCase):
+  database: Mock
+  owe: Owe
+
   def setUp(self) -> None:
     """Create an Owe service with a mocked database backend."""
     self.database = Mock()
